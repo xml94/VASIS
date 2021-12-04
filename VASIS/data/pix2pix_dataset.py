@@ -25,7 +25,8 @@ class Pix2pixDataset(BaseDataset):
             self.opt.phase = 'val'
         else:
             self.opt.phase = 'train'
-        label_paths, image_paths, instance_paths, dist_paths = self.get_paths(opt)
+        label_paths, image_paths, instance_paths, dist_paths = self.get_paths(self.opt)
+        print(f"Checking {len(instance_paths)}")
 
         util.natural_sort(label_paths)
         util.natural_sort(image_paths)

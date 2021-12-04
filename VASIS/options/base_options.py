@@ -33,6 +33,8 @@ class BaseOptions():
                             choices=['one', 'all'])
         parser.add_argument('--dist_type', type=str, default='offline', help='how to generate relative distance',
                             choices=['offline', 'online'])
+        parser.add_argument('--input_type', type=str, default='seg', choices=['seg', 'noise'],
+                            help='the input of generator: segmentation, random noise')
         parser.add_argument('--env', type=str, default='None', help='environment',
                             choices=['None', 'horovod'])
 

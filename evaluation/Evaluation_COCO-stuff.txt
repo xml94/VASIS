@@ -4,7 +4,6 @@ for COCO-stuff dataset
 	-enter datasets/cocostuff
 		-download annotations_trainval2017.zip 
 		-download stuffthingmaps_trainval2017.zip
-	-do: python download_coco_stuff.py
 	-change names from stuffthingmaps_trainval2017.zip:
 		-train2017 -> train_label
 		-val2017 -> val_label
@@ -13,6 +12,7 @@ for COCO-stuff dataset
 		-mkdir val_inst
 		-mkdir train_inst
 		-do: python coco_generate_instance_map.py --annotation_file './annotations/instances_train2017.json' --input_label_dir './train_label' --output_instance_dir 'train_inst'
+		-do: python coco_generate_instance_map.py --annotation_file './annotations/instances_val2017.json' --input_label_dir './val_label' --output_instance_dir 'val_inst'
 	-enter datasets/coco_stuff and do command: tree -A -L 1
 	-you can see this:
 		├── annotations

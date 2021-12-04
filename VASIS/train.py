@@ -30,6 +30,10 @@ if opt.env == 'horovod':
 
 # print options to help debugging
 print(' '.join(sys.argv))
+command_path = os.path.join(opt.results_dir, opt.name)
+os.makedirs(command_path, exist_ok=True)
+with open(command_path + '/command.txt', 'w+') as file:
+    file.writelines(' '.join(sys.argv))
 
 # load the dataset
 dataloader = data.create_dataloader(opt)
@@ -43,21 +47,22 @@ iter_counter = IterationCounter(opt, len(dataloader))
 # create tool for visualization
 visualizer = Visualizer(opt)
 
-vaL_opt = copy.deepcopy(opt)
+val_opt = copy.deepcopy(opt)
 if opt.train_eval:
-    vaL_opt.no_flip = True
-    vaL_opt.phase = 'test'
-    vaL_opt.serial_batches = True
-    vaL_opt.batchSize = 4  # should be n * number of gpus
-    vaL_opt.isTrain = False
-    dataloader_val = data.create_dataloader(vaL_opt)
-    val_visualizer = Visualizer(vaL_opt)
+    val_opt.no_flip = True
+    val_opt.phase = 'test'
+    val_opt.serial_batches = True
+    # val_opt.batchSize = 4  # should be n * number of gpus
+    assert val_opt.batchSize % len(val_opt.gpu_ids) == 0
+    val_opt.isTrain = False
+    dataloader_val = data.create_dataloader(val_opt)
+    val_visualizer = Visualizer(val_opt)
     # # create a webpage that summarizes the all results
-    web_dir = os.path.join(vaL_opt.results_dir, vaL_opt.name,
-                           '%s_%s' % (vaL_opt.phase, vaL_opt.which_epoch))
+    web_dir = os.path.join(val_opt.results_dir, val_opt.name,
+                           'test_%s' % (val_opt.which_epoch))
     webpage = html.HTML(web_dir,
-                        'Experiment = %s, Phase = %s, Epoch = %s' %
-                        (vaL_opt.name, vaL_opt.phase, vaL_opt.which_epoch))
+                        'Experiment = %s, Phase = test, Epoch = %s' %
+                        (val_opt.name, val_opt.which_epoch))
 
     # process for calculate FID scores
     from inception import InceptionV3
@@ -67,12 +72,12 @@ if opt.train_eval:
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[opt.eval_dims]
     eval_model = InceptionV3([block_idx]).cuda()
     # load real images distributions on the training set
-    mu_np_root = os.path.join('datasets/train_mu_si', vaL_opt.dataset_mode,'m.npy')
-    st_np_root = os.path.join('datasets/train_mu_si', vaL_opt.dataset_mode,'s.npy')
+    mu_np_root = os.path.join('datasets/train_mu_si', val_opt.dataset_mode,'m.npy')
+    st_np_root = os.path.join('datasets/train_mu_si', val_opt.dataset_mode,'s.npy')
     m0, s0 = np.load(mu_np_root), np.load(st_np_root)
     # load previous best FID
-    if vaL_opt.continue_train:
-        fid_record_dir = os.path.join(vaL_opt.checkpoints_dir, vaL_opt.name, 'fid.txt')
+    if val_opt.continue_train:
+        fid_record_dir = os.path.join(val_opt.checkpoints_dir, val_opt.name, 'fid.txt')
         FID_score, _ = np.loadtxt(fid_record_dir, delimiter=',', dtype=float)
     else:
         FID_score = 1000
@@ -83,15 +88,12 @@ for epoch in iter_counter.training_epochs():
     iter_counter.record_epoch_start(epoch)
     for i, data_i in enumerate(dataloader, start=iter_counter.epoch_iter):
         iter_counter.record_one_iteration()
-
         # Training
         # train generator
         if i % opt.D_steps_per_G == 0:
             trainer.run_generator_one_step(data_i)
-
         # train discriminator
         trainer.run_discriminator_one_step(data_i)
-
         # Visualizations
         if iter_counter.needs_printing():
             losses = trainer.get_latest_losses()
@@ -102,57 +104,47 @@ for epoch in iter_counter.training_epochs():
                 visualizer.print_current_errors(epoch, iter_counter.epoch_iter,
                                                 losses, iter_counter.time_per_iter)
             visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
-
-        # if iter_counter.needs_displaying():
-        #     visuals = OrderedDict([('input_label', data_i['label']),
-        #                            ('synthesized_image', trainer.get_latest_generated()),
-        #                            ('real_image', data_i['image'])])
-        #     visualizer.display_current_results(visuals, epoch, iter_counter.total_steps_so_far)
-
         if iter_counter.needs_saving():
             print('saving the latest model (epoch %d, total_steps %d)' %
                   (epoch, iter_counter.total_steps_so_far))
             trainer.save('latest')
             iter_counter.record_current_iter(FID_score)
 
-    trainer.update_learning_rate(epoch)
-    iter_counter.record_epoch_end()
-
-    if epoch % vaL_opt.eval_epoch_freq == 0 and vaL_opt.train_eval:
-        # generate fake image
+    if epoch % val_opt.eval_epoch_freq == 0 and val_opt.train_eval:
         trainer.pix2pix_model.eval()
+        # generate fake image
         print('Checking: start evaluation .... ')
-        if vaL_opt.use_vae:
+        if val_opt.use_vae:
             flag = True
-            vaL_opt.use_vae = False
+            val_opt.use_vae = False
         else:
             flag = False
         for i, data_i in enumerate(dataloader_val):
-            if data_i['label'].size()[0] != vaL_opt.batchSize:
-                if vaL_opt.batchSize > 2*data_i['label'].size()[0]:
+            if data_i['label'].size()[0] != val_opt.batchSize:
+                if val_opt.batchSize > 2*data_i['label'].size()[0]:
                     print('batch size is too large')
                     break
-                data_i = repair_data(data_i, vaL_opt.batchSize)
+                data_i = repair_data(data_i, val_opt.batchSize)
             generated = trainer.pix2pix_model(data_i, mode='inference')
             img_path = data_i['path']
             for b in range(generated.shape[0]):
                 # tmp = tensor2im(generated[b])
                 visuals = OrderedDict([('input_label', data_i['label'][b]),
-                                    ('synthesized_image', generated[b])])
+                                       ('synthesized_image', generated[b])])
                 val_visualizer.save_images(webpage, visuals, img_path[b:b + 1])
         webpage.save()
-        trainer.pix2pix_model.train()
+
         if flag:
-            vaL_opt.use_vae = True
+            val_opt.use_vae = True
         # cal fid score
         fake_path = pathlib.Path(os.path.join(web_dir, 'images/synthesized_image/'))
         files = list(fake_path.glob('*.jpg')) + list(fake_path.glob('*.png'))
-        m1, s1 = calculate_activation_statistics(files, eval_model, 1, vaL_opt.eval_dims, True, images=None)
+        m1, s1 = calculate_activation_statistics(files, eval_model, 1, val_opt.eval_dims, True, images=None)
         fid_value = calculate_frechet_distance(m0, s0, m1, s1)
         visualizer.print_eval_fids(epoch, fid_value, FID_score)
 
         # save the fid
-        file_name = os.path.join(vaL_opt.checkpoints_dir, vaL_opt.name, 'fid_history.txt')
+        file_name = os.path.join(val_opt.checkpoints_dir, val_opt.name, 'fid_history.txt')
         with open(file_name, 'a') as file:
             file.writelines(str(fid_value) + ',\n')
 
@@ -161,11 +153,16 @@ for epoch in iter_counter.training_epochs():
             FID_score = fid_value
             trainer.save('best')
 
-    if epoch % vaL_opt.save_epoch_freq == 0 or \
-       epoch == iter_counter.total_epochs:
+    if epoch % val_opt.save_epoch_freq == 0 or \
+            epoch == iter_counter.total_epochs:
         print('saving the model at the end of epoch %d, iters %d' %
               (epoch, iter_counter.total_steps_so_far))
         trainer.save('latest')
         trainer.save(epoch)
+
+    trainer.update_learning_rate(epoch)
+    iter_counter.record_epoch_end()
+    trainer.pix2pix_model.train()
+
 
 print('Training was successfully finished.')

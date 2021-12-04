@@ -7,9 +7,10 @@ batch=$5
 
 
 # must use absolute directory
-export drn_data_dir=/home/oem/Mingle/SemanticImageSynthesis/datasets/eval_cityscapes/cityscapes
+workDir=$(pwd)
+export drn_data_dir="$workDir"/datasets/eval_cityscapes/cityscapes
 
-export syn_dir=./$model/results/$expr_name/test_"$epoch"/images/synthesized_image
+export syn_dir=./$model/results/cityscapes/$expr_name/test_"$epoch"/images/synthesized_image
 export real_dir='./datasets/cityscapes'
 export drn_model_dir='./pretrained_model/drn-d-105_ms_cityscapes.pth'
 

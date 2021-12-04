@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="master" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="50" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="master">
+      <paths name="50">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/oem/Mingle/VASIS/" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/home/oem/Mingle/VASIS" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="51">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/oem/Mingle/VASIS" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

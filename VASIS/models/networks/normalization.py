@@ -193,8 +193,8 @@ class VariationAwareSPADE(nn.Module):
             self.pos_nc_in = 0
         elif self.pos == 'learn':
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
+            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
             self.pos_nc_in = 2
         elif self.pos == 'fix':
             self.pos_nc_in = 2
@@ -203,15 +203,15 @@ class VariationAwareSPADE(nn.Module):
             y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
             x = torch.cat([x] * W, dim=1).unsqueeze(0)
             y = torch.cat([y] * H, dim=0).unsqueeze(0)
-            self.gamma_pos = torch.cat([x, y], dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
             self.beta_pos = self.gamma_pos
         elif self.pos == 'reflect':
             self.pos_nc_in = 2
         elif self.pos == 'learn_relative':
             self.pos_nc_in = 4
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
+            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
         else:
             raise NotImplementedError('ERROR: please check the pos type: learn, fix, no')
         if self.pos_nc_in > 0:
@@ -279,16 +279,16 @@ class VariationAwareSPADE(nn.Module):
         # position code
         if self.pos_nc_in == 2:
             if self.pos in ['learn', 'fix']:
-                gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos.to(x.device)))
-                beta = beta * (1 + self.conv_pos_beta(self.beta_pos.to(x.device)))
+                gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(x.device)))
+                beta = beta * (1 + self.conv_pos_beta(self.beta_pos.unsqueeze(0).to(x.device)))
             else: # 'relative'
                 input_dist = F.interpolate(input_dist, size=x.size()[2:], mode='nearest')
                 gamma = gamma * (1 + self.conv_pos_gamma(input_dist))
                 beta = beta * (1 + self.conv_pos_beta(input_dist))
         elif self.pos_nc_in == 4:
             input_dist = F.interpolate(input_dist, size=x.size()[2:], mode='nearest')
-            gamma_pos = self.gamma_pos.expand_as(input_dist)
-            beta_pos = self.beta_pos.expand_as(input_dist)
+            gamma_pos = self.gamma_pos.unsqueeze(0).expand_as(input_dist)
+            beta_pos = self.beta_pos.unsqueeze(0).expand_as(input_dist)
             gamma_pos = torch.cat([gamma_pos.to(x.device), input_dist], dim=1)
             beta_pos = torch.cat([beta_pos.to(x.device), input_dist], dim=1)
             gamma = gamma * (1 + self.conv_pos_gamma(gamma_pos))
@@ -374,8 +374,10 @@ class VariationAffineCLADE(nn.Module):
             self.seg_nc = self.feature_nc // 2
             self.noise_nc = 1
         elif self.ctrl_noise == 'all':
-            self.seg_nc = self.feature_nc // 2
-            self.noise_nc = self.feature_nc - self.seg_nc
+            # self.seg_nc = self.feature_nc // 2
+            # self.noise_nc = self.feature_nc - self.seg_nc
+            self.seg_nc = self.feature_nc
+            self.noise_nc = self.feature_nc
         else:
             raise NotImplementedError('Please check the noise_nc: <zero, one, all>.')
 
@@ -404,8 +406,8 @@ class VariationAffineCLADE(nn.Module):
             self.pos_nc_in = 0
         elif self.pos == 'learn':
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
+            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
             self.pos_nc_in = 2
         elif self.pos == 'fix':
             self.pos_nc_in = 2
@@ -414,15 +416,15 @@ class VariationAffineCLADE(nn.Module):
             y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
             x = torch.cat([x] * W, dim=1).unsqueeze(0)
             y = torch.cat([y] * H, dim=0).unsqueeze(0)
-            self.gamma_pos = torch.cat([x, y], dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
             self.beta_pos = self.gamma_pos
-        elif self.pos == 'reflect':
+        elif self.pos == 'relative':
             self.pos_nc_in = 2
         elif self.pos == 'learn_relative':
             self.pos_nc_in = 4
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W)).unsqueeze(0)
+            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
         else:
             raise NotImplementedError('ERROR: please check the pos type: learn, fix, no')
         if self.pos_nc_in > 0:
@@ -450,8 +452,10 @@ class VariationAffineCLADE(nn.Module):
         beta_noise_gamma = F.embedding(arg_mask, self.beta_noise_gamma).permute(0, 3, 1, 2)
         beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
         B, _, H, W = mask.size()
-        noise_1 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
-        noise_2 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
+        # noise_1 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
+        # noise_2 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
+        noise_1 = torch.randn((B, self.feature_nc, H, W), device=mask.device)
+        noise_2 = torch.randn((B, self.feature_nc, H, W), device=mask.device)
         gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
         beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
         return gamma_noise, beta_noise
@@ -461,12 +465,12 @@ class VariationAffineCLADE(nn.Module):
         gamma_seg, beta_seg = self.affine_seg(mask)
 
         if self.pos_nc_in == 2:
-            gamma_seg = gamma_seg * (1+ self.conv_pos_gamma(self.gamma_pos.to(input.device)))
-            beta_seg = beta_seg * (1 + self.conv_pos_beta(self.beta_pos.to(input.device)))
+            gamma_seg = gamma_seg * (1+ self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(input.device)))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(self.beta_pos.unsqueeze(0).to(input.device)))
         elif self.pos_nc_in == 4:
             input_dist = F.interpolate(input_dist, size=input.size()[2:], mode='nearest')
-            gamma_pos = self.gamma_pos.expand_as(input_dist)
-            beta_pos = self.beta_pos.expand_as(input_dist)
+            gamma_pos = self.gamma_pos.unsqueeze(0).expand_as(input_dist)
+            beta_pos = self.beta_pos.unsqueeze(0).expand_as(input_dist)
             gamma_pos = torch.cat([gamma_pos.to(input.device), input_dist], dim=1)
             beta_pos = torch.cat([beta_pos.to(input.device), input_dist], dim=1)
             gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(gamma_pos))

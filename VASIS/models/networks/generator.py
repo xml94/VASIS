@@ -89,6 +89,21 @@ class SPADEGenerator(BaseNetwork):
 
         self.up = nn.Upsample(scale_factor=2)
 
+        if self.opt.input_type == 'noise':
+            nc = self.opt.label_nc if self.opt.no_instance else self.opt.label_nc + 1
+            self.input_noise_gamma = nn.Parameter(torch.Tensor(self.opt.label_nc, nc))
+            self.input_noise_beta = nn.Parameter(torch.Tensor(self.opt.label_nc, nc))
+
+    def affine_noise(self, mask):
+        arg_mask = torch.argmax(mask, 1).long()
+        noise_gamma = F.embedding(arg_mask, self.input_noise_gamma).permute(0, 3, 1, 2)
+        noise_beta = F.embedding(arg_mask, self.input_noise_beta).permute(0, 3, 1, 2)
+        B, _, H, W = mask.size()
+        noise = torch.randn((B, mask.size(1), H, W), device=mask.device)
+        noise = noise * noise_gamma + noise_beta
+        # noise = noise * noise_gamma + 1
+        return noise
+
     def compute_latent_vector_size(self, opt):
         if opt.num_upsampling_layers == 'normal':
             num_up_layers = 5
@@ -106,7 +121,12 @@ class SPADEGenerator(BaseNetwork):
         return sw, sh
 
     def forward(self, input, z=None, input_dist=None):
-        seg = input
+        if self.opt.input_type == 'seg':
+            seg = input
+        elif self.opt.input_type == 'noise':
+            # seg = torch.randn_like(input)
+            # seg = torch.randn_like(input) * input
+            seg = self.affine_noise(mask=input)
 
         # vis
         ctrl_label = 23 # sky

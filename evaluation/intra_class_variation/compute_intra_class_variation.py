@@ -51,7 +51,7 @@ if parser.data_type == 'cityscapes':
     label_nc = 35
     osize = (256, 512)
 elif parser.data_type == 'ade20k':
-    label_nc = 150
+    label_nc = 151
     osize = (256, 256)
 else:
     assert parser.data_type == 'cocostuff'
@@ -123,7 +123,7 @@ one_light_name = join(parser.save_name, 'one_light.txt')
 all_color_name = join(parser.save_name, 'all_color.txt')
 all_light_name = join(parser.save_name, 'all_light.txt')
 
-np.savetxt(one_color_name, one_color, fmt='%.3f', delimiter=',', newline=',')
-np.savetxt(one_light_name, one_light, fmt='%.3f', delimiter=',', newline=',')
-np.savetxt(all_color_name, all_color, fmt='%.3f', delimiter=',', newline=',')
-np.savetxt(all_light_name, all_light, fmt='%.3f', delimiter=',', newline=',')
+np.savetxt(one_color_name, one_color, fmt='%.3f', delimiter=',\n', newline=',')
+np.savetxt(one_light_name, one_light, fmt='%.3f', delimiter=',\n', newline=',')
+np.savetxt(all_color_name, all_color, fmt='%.3f', delimiter=',\n', newline=',')
+np.savetxt(all_light_name, all_light, fmt='%.3f', delimiter=',\n', newline=',')

@@ -5,23 +5,27 @@ export batchSize=1
 export epoch=best
 export date=1001
 export device=oem
-export name=ade20k_dist
+export date=1105
+export result="results/coco"
+export ckpt="checkpoints/coco"
+export name="$date"_cVASIS_learnRelativeAll_all_"$device"
 
 
 python test.py --name $name \
---norm_mode clade --batchSize $batchSize \
+--norm_mode clade_variation --batchSize $batchSize \
 --gpu_ids $gpu --which_epoch $epoch \
---dataset_mode ade20k \
---dataroot "./../datasets/ADEChallengeData2016" \
---pad 'zero' --pos 'abs_learn' --noise_nc 'one' \
---add_dist --dist_type 'online'
+--dataset_mode coco --dataroot "./../datasets/cocostuff" \
+--results_dir "$result" --checkpoints_dir $ckpt \
+--pad 'reflect' \
+--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'online' \
+--noise_nc 'all'
 #--vis 1
 
 
 # compute FID
 export real_path=./../datasets/cityscapes/
-export fake_path=./results/$name/test_"$epoch"/images/synthesized_image
-python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name ade20k
+export fake_path=./$result/$name/test_"$epoch"/images/synthesized_image
+python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name coco
 
 
 #export real_path=./../datasets/cityscapes/

@@ -29,7 +29,11 @@ class ADE20KDataset(Pix2pixDataset):
 
     def get_paths(self, opt):
         root = opt.dataroot
-        phase = 'val' if opt.phase == 'test' else 'train'
+        # phase = 'val' if opt.phase == 'test' else 'train'
+        if opt.phase == 'test' or opt.phase == 'val':
+            phase = 'val'
+        else:
+            phase = 'train'
 
         all_images = make_dataset(root, recursive=True, read_cache=False, write_cache=False)
         image_paths = []

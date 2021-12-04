@@ -2,10 +2,17 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="e7aa1073-eb7a-4468-84d2-f1af0c47203f" name="master">
-        <fileTransfer accessType="SFTP" host="113.198.60.50" port="22" sshConfigId="15e43990-c42f-4325-843b-f9ce75a6c115" sshConfig="oem">
+      <webServer id="dec2628d-1b8e-4775-b2f6-efdfd772e2f9" name="50">
+        <fileTransfer accessType="SFTP" host="113.198.60.51" port="10022" sshConfigId="ce54b663-9b62-49ca-bc63-b42bd55286e5" sshConfig="oem@113.198.60.51:10022 password">
           <advancedOptions>
-            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="b13a8b50-f77f-4578-b636-2aa97fd0068f" name="51">
+        <fileTransfer accessType="SFTP" host="113.198.60.51" port="10022" sshConfigId="ce54b663-9b62-49ca-bc63-b42bd55286e5" sshConfig="oem@113.198.60.51:10022 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>
         </fileTransfer>
       </webServer>

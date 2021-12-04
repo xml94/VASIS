@@ -13,7 +13,7 @@
 -generate fake images
 -prepare evaluation dataset
 	-enter evaluation/semantic-segmentation-pytorch-master
-	-enter data/
+	-enter ./datasets/eval_ade20k/data/
 		-download ADEChallengeData2016.zip and unzip
 	-do: mkdir -p ckpt/ade20k-resnet101-upernet/
 		-download pretained model
