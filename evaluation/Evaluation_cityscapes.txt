@@ -1,0 +1,53 @@
+Parpare dataset and evaluate cityscapes
+-Parpare cityscapes dataset
+	-Go to this page: https://www.cityscapes-dataset.com/downloads/
+	-make dir: ./datasets/cityscapes and parpare the dataset
+	-Download and unzip gtFine_trainvaltest.zip
+	-Download and unzip leftImg8bit_trainvaltest.zip
+	-in current directory, use this command: tree -A -L 2, you can get this
+	-├── gtFine
+		│   ├── test
+		│   ├── train
+		│   └── val
+		├── gtFine_trainvaltest.zip
+		├── leftImg8bit
+		│   ├── test
+		│   ├── train
+		│   └── val
+		├── leftImg8bit_trainvaltest.zip
+		├── license.txt
+		└── README
+-Produce syntheized images
+	--same with spade
+-Download and unzip pretrained model
+	--you can see this using tree -A -L 2
+		├── classify.py
+		├── datasets
+		│   ├── cityscapes
+		│   └── compute_mean_std.py
+		├── data_transforms.py
+		├── doc
+		│   └── drn_comp.png
+		├── drn.py
+		├── lib
+		│   ├── build.py
+		│   ├── dense
+		│   ├── functions
+		│   ├── Makefile
+		│   ├── modules
+		│   ├── src
+		│   └── test.py
+		├── LICENSE
+		├── models
+		│   └── drn-d-105_ms_cityscapes.pth
+		├── README.md
+		├── requirements.txt
+		├── segment.py
+		└── test.sh
+-Parpare data to evaluate
+	-Down sampling the gtFine/val/* images with nearest method to 256*512
+	-return to spade directory
+	-use down_img.py to down sampling
+-do evaluation
+	-enter drn directory
+	-sh test.sh, then you can see the results

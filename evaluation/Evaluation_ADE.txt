@@ -1,0 +1,21 @@
+-Parpare dataset to generate fake images
+	-enter datasets and download ADEChallengeData2016.zip
+	-unzip the dataset, and you get
+		ADEChallengeData2016
+		├── annotations
+		│   ├── training
+		│   └── validation
+		├── images
+		│   ├── training
+		│   └── validation
+		├── objectInfo150.txt
+		└── sceneCategories.txt
+-generate fake images
+-prepare evaluation dataset
+	-enter evaluation/semantic-segmentation-pytorch-master
+	-enter data/
+		-download ADEChallengeData2016.zip and unzip
+	-do: mkdir -p ckpt/ade20k-resnet101-upernet/
+		-download pretained model
+			-decoder_epoch_50.pth
+			-encoder_epoch_50.pth

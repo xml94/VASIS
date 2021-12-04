@@ -1,0 +1,51 @@
+for COCO-stuff dataset
+
+-prepare dataset for image generation model
+	-enter datasets/cocostuff
+		-download annotations_trainval2017.zip 
+		-download stuffthingmaps_trainval2017.zip
+	-do: python download_coco_stuff.py
+	-change names from stuffthingmaps_trainval2017.zip:
+		-train2017 -> train_label
+		-val2017 -> val_label
+	-do command to generate instance
+		-copy coco_generate_instance_map.py to datasets/cocostuff
+		-mkdir val_inst
+		-mkdir train_inst
+		-do: python coco_generate_instance_map.py --annotation_file './annotations/instances_train2017.json' --input_label_dir './train_label' --output_instance_dir 'train_inst'
+	-enter datasets/coco_stuff and do command: tree -A -L 1
+	-you can see this:
+		├── annotations
+		├── coco_generate_instance_map.py
+		├── cocostuff.zip
+		├── train_img (118287 .jpg)
+		├── train_inst (118287 .png)
+		├── train_label (118287 .png)
+		├── val_img (5000 .jpg)
+		├── val_inst (5000 .png)
+		└── val_label (5000 .png)
+-prepare generated results
+	-
+-prepare the dataset for evaluation model
+	-enter evaluation/deeplab-pytorch-master
+	-do: conda env create -f configs/conda_env.yaml
+	-do: conda activate deeplab-pytorch
+	-do: mkdir datasets/coco164k
+	-download at datasets/coco164k
+		-val2017.zip
+		-stuffthingmaps_trainval2017.zip
+		-annotations_trainval2017.zip
+		-refer: https://github.com/kazuto1011/deeplab-pytorch/blob/master/data/datasets/cocostuff/README.md
+	-do: bash ./scripts/setup_cocostuff164k.sh datasets/coco164k
+	-use tree -A -L 2, you can get this
+		├── annotations
+		│   └── val2017
+		└── images
+			├── val2017 (we will copy the generated image to this dir)
+	-change val2017 as val2017_original
+	-do: mkdir models
+	-at models/ download the pretrained model
+		-deeplabv2_resnet101_msc-cocostuff164k-100000.pth
+	-do: bash scripts/setup_caffemodels.sh
+	-do: python convert.py --dataset coco
+	-do: sh test.sh with your command
