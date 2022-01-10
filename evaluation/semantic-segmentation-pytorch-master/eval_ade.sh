@@ -4,7 +4,7 @@ export epoch=$3
 export gpu=$4
 
 
-export syn_dir=./$model/results/$expr_name/test_"$epoch"/images/synthesized_image
+export syn_dir=./$model/results/ade20k/$expr_name/test_"$epoch"/images/synthesized_image
 export eval_dir="./datasets/eval_ade20k/data/ADEChallengeData2016"
 export ade20k_dir='./datasets/ADEChallengeData2016/annotations'
 

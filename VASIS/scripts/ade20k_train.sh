@@ -2,7 +2,7 @@
 #  ADE20K
 #############
 export gpu=0,1,2,3
-export freq=10
+export freq=5
 export batch=16
 export niter=100
 export niter_decay=100
@@ -15,25 +15,42 @@ export ckpt="./checkpoints/ade20k"
 ############################################
 ## Ours
 ############################################
-python train.py --name "$date"_cVASIS_learnRelativeAll_all_"$device" \
---dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016_back" \
---gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#python train.py --name "$date"_cVASIS_learnRelativeAll_all_batch32_epoch300_"$device" \
+#--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
+#--gpu_ids $gpu --batchSize $batch \
+#--train_eval --eval_epoch_freq "$freq" \
+#--results_dir "$result" --checkpoints_dir "$ckpt" \
+#--norm_mode clade_variation \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--noise_nc 'all' \
+#--niter 150 --niter_decay 150
+#--niter $niter --niter_decay $niter_decay
+
+
+python train.py --name "$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_oem50_"$device" \
+--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
+--gpu_ids $gpu --batchSize $batch \
 --train_eval --eval_epoch_freq "$freq" \
 --results_dir "$result" --checkpoints_dir "$ckpt" \
---norm_mode clade_variation \
+--norm_mode spade_variation \
 --pad 'reflect' \
 --pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
+--noise_nc 'all' \
+--niter 150 --niter_decay 150
 
-python train.py --name "$date"_sVASIS_learnRelativeAll_all_"$device" \
---dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016_back" \
+
+export batch=28
+python train.py --name "$date"_sVASIS_learnRelativeAll_all_batch28_epoch300_oem50_"$device" \
+--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
 --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
 --train_eval --eval_epoch_freq "$freq" \
 --results_dir "$result" --checkpoints_dir "$ckpt" \
 --norm_mode spade_variation \
 --pad 'reflect' \
 --pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
+--noise_nc 'all' \
+--niter 150 --niter_decay 150
 
 
 ############################################
@@ -65,10 +82,11 @@ python train.py --name "$date"_sVASIS_learnRelativeAll_all_"$device" \
 ############################################
 ## SPADE
 ############################################
-#python train.py --name "$date"_spade_"$device" \
-#--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016_back" \
+#python train.py --name "$date"_spade_epoch300_"$device" \
+#--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
 #--gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
 #--train_eval --eval_epoch_freq "$freq" \
 #--results_dir "$result" --checkpoints_dir "$ckpt" \
 #--norm_mode spade \
-#--pad 'zero'
+#--pad 'zero' \
+#--niter 150 --niter_decay 150

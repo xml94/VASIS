@@ -12,10 +12,12 @@ batch_size: how many batches when computing, for ade20k, only 1 is valid
 EOF
 
 
-export model="CLADE-main"
-export expr_name="clade_coco"
+export model="VASIS"
 export epoch="best"
 export gpu=2
 export batch_size=1
+export date=1105
+export device=oem
+export expr_name="$date"_sVASIS_learnRelativeAll_all_epoch150_batch28_"$device"
 
 sh ./evaluation/deeplab_pytorch/eval_coco.sh $model $expr_name $epoch $gpu

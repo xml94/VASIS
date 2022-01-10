@@ -4,10 +4,10 @@ epoch=$3
 gpu=$4
 
 
-export syn_dir=./$model/results/$expr_name/test_"$epoch"/images/synthesized_image
+export syn_dir=./$model/results/coco/$expr_name/test_"$epoch"/images/synthesized_image
 export eval_dir=./datasets/eval_cocostuff/datasets/coco164k
 export model_dir=./pretrained_model/deeplabv2_resnet101_msc-cocostuff164k-100000.pth
-export coco_dir=./datasets/coco_stuff
+export coco_dir=./datasets/cocostuff
 
 # copy synthesized images
 if [ ! -e "$eval_dir/images/val2017" ]

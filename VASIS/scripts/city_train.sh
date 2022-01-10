@@ -17,91 +17,91 @@ export ckpt="./checkpoints/cityscapes"
 ############################################
 # clade original with zero padding
 python train.py --name "$date"_clade_zero_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+--dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
 --norm_mode clade --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
 --train_eval --eval_epoch_freq "$freq" --results_dir "$result" --checkpoints_dir $ckpt \
 --pad 'zero' \
 --pos 'learn_relative' --pos_nc 'all' --dist_type 'offline' \
 --noise_nc 'all'
 
-# clade original with reflect padding
-python train.py --name "$date"_clade_reflect_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq "$freq" --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' --dist_type 'offline' \
---noise_nc 'all'
-
-# clade ICPE
-python train.py --name "$date"_clade_ICPE_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq "$freq" --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'zero' \
---pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
-
-############################################
-## Ours method with CLADE: semantic noise and position code
-############################################
-# position: learn, relative, all, noise: all
-python train.py --name "$date"_cVASIS_learnRelativeAll_all_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
-
-python train.py --name "$date"_cVASIS_learnRelativeAll_no_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' \
---noise_nc 'zero'
-
-python train.py --name "$date"_cVASIS_no_all_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'no' --pos_nc 'all' \
---noise_nc 'all'
-
-####################################
-python train.py --name "$date"_cVASIS_learnRelativeOne_one_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
-
-python train.py --name "$date"_cVASIS_learnAll_all_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'learn' --pos_nc 'all' \
---noise_nc 'all'
-
-python train.py --name "$date"_cVASIS_relativeAll_all_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'relative' --pos_nc 'all' \
---noise_nc 'all'
-
-python train.py --name "$date"_cVASIS_fixAll_all_"$device" \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
---norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---pos 'fix' --pos_nc 'all' \
---noise_nc 'all'
+## clade original with reflect padding
+#python train.py --name "$date"_clade_reflect_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq "$freq" --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' --dist_type 'offline' \
+#--noise_nc 'all'
+#
+## clade ICPE
+#python train.py --name "$date"_clade_ICPE_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq "$freq" --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'zero' \
+#--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--noise_nc 'all'
+#
+#############################################
+### Ours method with CLADE: semantic noise and position code
+#############################################
+## position: learn, relative, all, noise: all
+#python train.py --name "$date"_cVASIS_learnRelativeAll_all_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--noise_nc 'all'
+#
+#python train.py --name "$date"_cVASIS_learnRelativeAll_no_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' \
+#--noise_nc 'zero'
+#
+#python train.py --name "$date"_cVASIS_no_all_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'no' --pos_nc 'all' \
+#--noise_nc 'all'
+#
+#####################################
+#python train.py --name "$date"_cVASIS_learnRelativeOne_one_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--noise_nc 'all'
+#
+#python train.py --name "$date"_cVASIS_learnAll_all_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'learn' --pos_nc 'all' \
+#--noise_nc 'all'
+#
+#python train.py --name "$date"_cVASIS_relativeAll_all_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'relative' --pos_nc 'all' \
+#--noise_nc 'all'
+#
+#python train.py --name "$date"_cVASIS_fixAll_all_"$device" \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes_back" \
+#--norm_mode clade_variation --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq --results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--pos 'fix' --pos_nc 'all' \
+#--noise_nc 'all'
 
 
 ############################################

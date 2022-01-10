@@ -176,6 +176,8 @@ class VariationAwareSPADE(nn.Module):
             self.seg_nc = self.norm_nc // 2
             self.noise_nc = 1
         elif ctrl_noise == 'all':
+            # self.seg_nc = self.norm_nc
+            # self.noise_nc = self.norm_nc
             self.seg_nc = self.norm_nc // 2
             self.noise_nc = self.norm_nc - self.seg_nc
         else:
@@ -374,10 +376,8 @@ class VariationAffineCLADE(nn.Module):
             self.seg_nc = self.feature_nc // 2
             self.noise_nc = 1
         elif self.ctrl_noise == 'all':
-            # self.seg_nc = self.feature_nc // 2
-            # self.noise_nc = self.feature_nc - self.seg_nc
-            self.seg_nc = self.feature_nc
-            self.noise_nc = self.feature_nc
+            self.seg_nc = self.feature_nc // 2
+            self.noise_nc = self.feature_nc - self.seg_nc
         else:
             raise NotImplementedError('Please check the noise_nc: <zero, one, all>.')
 
@@ -452,10 +452,8 @@ class VariationAffineCLADE(nn.Module):
         beta_noise_gamma = F.embedding(arg_mask, self.beta_noise_gamma).permute(0, 3, 1, 2)
         beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
         B, _, H, W = mask.size()
-        # noise_1 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
-        # noise_2 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
-        noise_1 = torch.randn((B, self.feature_nc, H, W), device=mask.device)
-        noise_2 = torch.randn((B, self.feature_nc, H, W), device=mask.device)
+        noise_1 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
+        noise_2 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
         gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
         beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
         return gamma_noise, beta_noise

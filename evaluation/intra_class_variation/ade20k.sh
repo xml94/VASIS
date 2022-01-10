@@ -1,16 +1,15 @@
 export code=compute_intra_class_variation.py
 export date=1105
 export device=oem
-export seg_path='/home/oem/Mingle/SemanticImageSynthesis/datasets/ADEChallengeData2016_back/annotations/validation'
+export seg_path='/home/oem/Mingle/VASIS/datasets/ADEChallengeData2016/annotations/validation'
 
 # real img
-export real_img_path=/home/oem/Mingle/SemanticImageSynthesis/datasets/ADEChallengeData2016/images/validation_256/
+export real_img_path=/home/oem/Mingle/VASIS/datasets/ADEChallengeData2016/images/validation_256/
 #python $code --img_path $real_img_path --seg_path $seg_path --save_name real --data_type 'ade20k'
 
 # fake img
-expr_name="$date"_spade_"$device"
-export expr_name=CLADE
-export img_path=/home/oem/Mingle/SemanticImageSynthesis/CLADE-variation/results/"$expr_name"/test_best/images/synthesized_image
+export expr_name="$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_"$device"
+export img_path=/home/oem/Mingle/VASIS/VASIS/results/ade20k/"$expr_name"/test_best/images/synthesized_image
 python $code --img_path $img_path --seg_path $seg_path --save_name cladeICPE --data_type 'ade20k'
 
 

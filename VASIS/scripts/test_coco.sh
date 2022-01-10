@@ -3,16 +3,15 @@
 export gpu=1
 export batchSize=1
 export epoch=best
-export date=1001
 export device=oem
 export date=1105
 export result="results/coco"
 export ckpt="checkpoints/coco"
-export name="$date"_cVASIS_learnRelativeAll_all_"$device"
+export name="$date"_sVASIS_learnRelativeAll_all_epoch150_batch28_"$device"
 
 
 python test.py --name $name \
---norm_mode clade_variation --batchSize $batchSize \
+--norm_mode spade_variation --batchSize $batchSize \
 --gpu_ids $gpu --which_epoch $epoch \
 --dataset_mode coco --dataroot "./../datasets/cocostuff" \
 --results_dir "$result" --checkpoints_dir $ckpt \

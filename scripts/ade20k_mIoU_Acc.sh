@@ -12,10 +12,12 @@ batch_size: how many batches when computing, for ade20k, only 1 is valid
 EOF
 
 
-export model="CLADE-variation"
-export expr_name="1001_ade20k_spade_variation_oem"
+export model="VASIS"
 export epoch="best"
 export gpu=1
 export batch_size=1
+export date=1105
+export device=oem
+export expr_name="$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_"$device"
 
 sh ./evaluation/semantic-segmentation-pytorch-master/eval_ade.sh $model $expr_name $epoch $gpu

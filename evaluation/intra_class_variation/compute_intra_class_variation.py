@@ -33,8 +33,8 @@ def get_transform(osize=(256, 256)):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--seg_path', type=str, default='/home/oem/Mingle/SemanticImageSynthesis/datasets/cityscapes/seg/')
-parser.add_argument('--img_path', type=str, default='/home/oem/Mingle/SemanticImageSynthesis/datasets/cityscapes/img/')
+parser.add_argument('--seg_path', type=str, default='/home/oem/Mingle/VASIS/datasets/cityscapes/seg/')
+parser.add_argument('--img_path', type=str, default='/home/oem/Mingle/VASIS/datasets/cityscapes/img/')
 parser.add_argument('--data_type', type=str, default='cityscapes', choices=['cityscapes', 'ade20k', 'cocostuff'])
 parser.add_argument('--save_name', type=str, default='cityscapes_val')
 parser.add_argument('--type_variation', type=str, default='one_color',
