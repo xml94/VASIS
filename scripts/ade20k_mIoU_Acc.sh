@@ -18,6 +18,6 @@ export gpu=1
 export batch_size=1
 export date=1105
 export device=oem
-export expr_name="$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_"$device"
+export expr_name="$date"_sVASIS_learnRelativeAll_all_batch28_epoch300_oem50_"$device"
 
 sh ./evaluation/semantic-segmentation-pytorch-master/eval_ade.sh $model $expr_name $epoch $gpu

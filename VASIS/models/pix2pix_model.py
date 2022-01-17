@@ -7,6 +7,7 @@ import torch
 import models.networks as networks
 import util.util as util
 import random
+from ptflops import get_model_complexity_info
 try:
     from torch.cuda.amp import autocast as autocast, GradScaler
     AMP = True
@@ -33,6 +34,12 @@ class Pix2PixModel(torch.nn.Module):
                 else torch.ByteTensor
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
+        # print network
+        # with torch.cuda.device(0):
+        #     macs, params = get_model_complexity_info(
+        #         self.netG, (151, 8, 8), as_strings=True,
+        #         print_per_layer_stat=True, verbose=True
+        #     )
 
         if self.opt.env == 'horovod':
             import horovod.torch as hvd

@@ -8,7 +8,7 @@ export real_img_path=/home/oem/Mingle/VASIS/datasets/ADEChallengeData2016/images
 #python $code --img_path $real_img_path --seg_path $seg_path --save_name real --data_type 'ade20k'
 
 # fake img
-export expr_name="$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_"$device"
+export expr_name="$date"_sVASIS_learnRelativeAll_all_batch28_epoch300_"$device"
 export img_path=/home/oem/Mingle/VASIS/VASIS/results/ade20k/"$expr_name"/test_best/images/synthesized_image
 python $code --img_path $img_path --seg_path $seg_path --save_name cladeICPE --data_type 'ade20k'
 

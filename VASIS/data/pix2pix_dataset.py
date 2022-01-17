@@ -11,6 +11,7 @@ import numpy as np
 from data.cal_dist import cal_connectedComponents
 import time
 import datetime
+from torchvision.transforms.functional import InterpolationMode
 
 class Pix2pixDataset(BaseDataset):
     @staticmethod
@@ -26,7 +27,6 @@ class Pix2pixDataset(BaseDataset):
         else:
             self.opt.phase = 'train'
         label_paths, image_paths, instance_paths, dist_paths = self.get_paths(self.opt)
-        print(f"Checking {len(instance_paths)}")
 
         util.natural_sort(label_paths)
         util.natural_sort(image_paths)
@@ -72,7 +72,7 @@ class Pix2pixDataset(BaseDataset):
         label_path = self.label_paths[index]
         label = Image.open(label_path)
         params = get_params(self.opt, label.size)
-        transform_label = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
+        transform_label = get_transform(self.opt, params, method=InterpolationMode.NEAREST, normalize=False)
         label_tensor = transform_label(label) * 255.0
         label_tensor[label_tensor == 255] = self.opt.label_nc  # 'unknown' is opt.label_nc
 

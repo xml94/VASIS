@@ -1,7 +1,7 @@
 #python test.py --name [model_name] --norm_mode clade --batchSize 1 --gpu_ids 0 --which_epoch best --dataset_mode [dataset] --dataroot [Path_to_dataset] --add_dist
 
 export gpu=1
-export batchSize=40
+export batchSize=16
 export epoch=best
 export date=1105
 export device=oem
@@ -21,7 +21,7 @@ export result="./results/ade20k"
 #--noise_nc 'all'
 
 
-export name="$date"_sVASIS_learnRelativeAll_all_batch16_epoch300_"$device"
+export name="$date"_sVASIS_learnRelativeAll_all_batch28_epoch300_"$device"
 python test.py --name $name \
 --norm_mode spade_variation --batchSize $batchSize \
 --gpu_ids $gpu --which_epoch $epoch \
