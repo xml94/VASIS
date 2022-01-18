@@ -124,22 +124,19 @@ class SPADEGenerator(BaseNetwork):
         if self.opt.input_type == 'seg':
             seg = input
         elif self.opt.input_type == 'noise':
-            # seg = torch.randn_like(input)
-            # seg = torch.randn_like(input) * input
             seg = self.affine_noise(mask=input)
-
-        # vis
-        ctrl_label = 23 # sky
-        ctrl_label_1 = 23 # sky
-        ctrl_label_2 = 7 # road
-        vis_size = [256, 256]
-        save_name = f'spade_original_vis{self.opt.vis}'
-        save_mean = []
-        save_std = []
 
         feat = []
         if self.opt.vis:
             B, N, H, W = seg.size()
+            # vis
+            ctrl_label = 23 # sky
+            ctrl_label_1 = 23 # sky
+            ctrl_label_2 = 7 # road
+            vis_size = [256, 256]
+            save_name = f'spade_original_vis{self.opt.vis}'
+            save_mean = []
+            save_std = []
             if self.opt.vis == 1:
                 seg[0] = torch.zeros(N, H, W, device=seg.device)
                 seg[0, ctrl_label] = torch.ones(H, W, device=seg.device)

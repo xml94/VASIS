@@ -6,7 +6,7 @@ import os.path as osp
 
 # down sample ground truth labels to compute mIoU and Pixel Accuracy
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_dir', type=str, default='/home/oem/Mingle/Project/datasets/cityscapes')
+parser.add_argument('--dataset_dir', type=str, default='/home/oem/Mingle/VASIS/datasets/cityscapes')
 parser = parser.parse_args()
 
 orig_root = osp.join(parser.dataset_dir, 'gtFine/val')

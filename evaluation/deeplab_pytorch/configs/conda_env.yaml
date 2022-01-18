@@ -2,7 +2,7 @@ name: deeplab-pytorch
 dependencies:
   - click
   - conda-forge::pydensecrf
-  - cudatoolkit=10.2
+  - cudatoolkit=11.2
   - matplotlib
   - python=3.6
   - pytorch::pytorch>1.2.0

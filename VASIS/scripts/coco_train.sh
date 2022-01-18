@@ -12,6 +12,7 @@ export ckpt="./checkpoints/coco"
 ############################################
 ## Ours
 ############################################
+export batch=28
 python train.py --name "$date"_sVASIS_learnRelativeAll_all_"$device" \
 --dataset_mode coco --dataroot "./../datasets/cocostuff" \
 --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
@@ -22,6 +23,7 @@ python train.py --name "$date"_sVASIS_learnRelativeAll_all_"$device" \
 --pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
 --noise_nc 'all'
 
+export batch=32
 python train.py --name "$date"_cVASIS_learnRelativeAll_all_"$device" \
 --dataset_mode coco --dataroot "./../datasets/cocostuff" \
 --gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
