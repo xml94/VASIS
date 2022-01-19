@@ -19,7 +19,7 @@ Input:
     ...
 """
 
-import html
+import my_html as html
 import argparse
 import os
 import os.path as osp

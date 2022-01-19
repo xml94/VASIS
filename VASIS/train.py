@@ -111,7 +111,7 @@ for epoch in iter_counter.training_epochs():
             trainer.save('latest')
             iter_counter.record_current_iter(FID_score)
 
-    if epoch % val_opt.eval_epoch_freq == 0 or epoch == 1: #and val_opt.train_eval and epoch > 50
+    if epoch % val_opt.eval_epoch_freq == 0: #and val_opt.train_eval and epoch > 50
         trainer.pix2pix_model.eval()
         # generate fake image
         print('Checking: start evaluation .... ')

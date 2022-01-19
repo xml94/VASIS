@@ -20,8 +20,13 @@ class BaseOptions():
     def initialize(self, parser):
         parser.add_argument('--vis', type=int, default=0, help='if visualize the feature map')
         parser.add_argument('--pad', type=str, default='reflect', help='padding type', choices=['zero', 'reflect'])
-        parser.add_argument('--pos', type=str, default='one', choices=['no', 'learn', 'fix', 'learn_relative', 'relative'],
+        parser.add_argument('--pos', type=str, default='one',
+                            choices=['no', 'learn', 'fix', 'learn_relative', 'relative', 'fix_learn_relative'],
                             help='if use position in normalization')
+        parser.add_argument('--pos_nc', type=str, default='one', help='number of channels for pos',
+                            choices=['one', 'all'])
+        parser.add_argument('--mode_noise', type=str, default='norm_cat',
+                            choices=['norm_cat', 'mul_cat', 'norm_avg', 'mul_avg'])
         parser.add_argument('--noise_nc', type=str, default='one', choices=['zero', 'one', 'all'],
                             help='the dimension of the learned mean and var for noise: zero, one, all')
         parser.add_argument('--height', type=int, default=0, help='the height in every scale, it will be rewritten')
@@ -29,14 +34,13 @@ class BaseOptions():
         parser.add_argument('--check_time', type=int, default=0, help='if check the time to generate the relative distance')
         parser.add_argument('--kernel', type=int, default=3, help='the kernel size of the conv layer')
         parser.add_argument('--kernel_norm', type=int, default=3, help='the kernel size in norm layer in SPADE')
-        parser.add_argument('--pos_nc', type=str, default='one', help='number of channels for pos',
-                            choices=['one', 'all'])
         parser.add_argument('--dist_type', type=str, default='offline', help='how to generate relative distance',
                             choices=['offline', 'online'])
         parser.add_argument('--input_type', type=str, default='seg', choices=['seg', 'noise'],
                             help='the input of generator: segmentation, random noise')
         parser.add_argument('--env', type=str, default='None', help='environment',
                             choices=['None', 'horovod'])
+        parser.add_argument('--check_flop', type=int, default=0)
 
         # experiment specifics
         parser.add_argument('--name', type=str, default='label2coco', help='name of the experiment. It decides where to store samples and models')

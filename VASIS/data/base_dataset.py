@@ -10,7 +10,6 @@ import numpy as np
 import random
 import torch
 import torch.nn.functional as F
-from torchvision.transforms.functional import InterpolationMode
 
 class BaseDataset(data.Dataset):
     def __init__(self):
@@ -58,7 +57,7 @@ def get_params(opt, size):
     return {'crop_pos': (x, y), 'flip': flip}
 
 
-def get_transform(opt, params, method=InterpolationMode.BICUBIC, normalize=True, toTensor=True):
+def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
     transform_list = []
     if 'resize' in opt.preprocess_mode:
         osize = [opt.load_size, opt.load_size]

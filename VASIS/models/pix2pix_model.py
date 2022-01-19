@@ -34,12 +34,27 @@ class Pix2PixModel(torch.nn.Module):
                 else torch.ByteTensor
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
-        # print network
-        # with torch.cuda.device(0):
-        #     macs, params = get_model_complexity_info(
-        #         self.netG, (151, 8, 8), as_strings=True,
-        #         print_per_layer_stat=True, verbose=True
-        #     )
+        if self.opt.check_flop:
+            with torch.cuda.device(0):
+                if self.opt.dataset_mode == 'ade20k':
+                    macs, params = get_model_complexity_info(
+                        self.netG, (151, 8, 8), as_strings=True,
+                        print_per_layer_stat=False, verbose=False
+                    )
+                elif self.opt.dataset_mode == 'coco':
+                    macs, params = get_model_complexity_info(
+                        self.netG, (181, 8, 8), as_strings=True,
+                        print_per_layer_stat=False, verbose=False
+                    )
+                elif self.opt.dataset_mode == 'cityscapes':
+                    macs, params = get_model_complexity_info(
+                        self.netG, (36, 8, 4), as_strings=True,
+                        print_per_layer_stat=False, verbose=False
+                    )
+                else:
+                    raise NotImplementedError('Checking please the dataset mode to compute flops.')
+                print('Checking: {:<30}  {:<8}'.format('Number of parameters: ', params))
+                print('Checking: {:<30}  {:<8}'.format('Computational complexity: ', macs))
 
         if self.opt.env == 'horovod':
             import horovod.torch as hvd
@@ -56,6 +71,7 @@ class Pix2PixModel(torch.nn.Module):
                 self.netE.cuda()
 
         self.amp = True if AMP and opt.use_amp and opt.isTrain else False
+        self.checking_flag = False
 
         # set loss functions
         if opt.isTrain:
@@ -73,7 +89,6 @@ class Pix2PixModel(torch.nn.Module):
     # routines based on |mode|.
     def forward(self, data, mode):
         input_semantics, real_image, input_dist = self.preprocess_input(data)
-
         if mode == 'generator':
             g_loss, generated = self.compute_generator_loss(
                 input_semantics, real_image, input_dist)

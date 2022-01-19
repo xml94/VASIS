@@ -25,15 +25,15 @@ python train.py --name "$date"_sVASIS_learnRelativeAll_all_batch32_1_"$device" \
 --pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
 --noise_nc 'all'
 
-python train.py --name "$date"_cVASIS_learnRelativeAll_all_batch32_1_"$device" \
---dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
---gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq "$freq" \
---results_dir "$result" --checkpoints_dir "$ckpt" \
---norm_mode clade_variation \
---pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
---noise_nc 'all'
+#python train.py --name "$date"_cVASIS_learnRelativeAll_all_batch32_1_"$device" \
+#--dataset_mode ade20k --dataroot "./../datasets/ADEChallengeData2016" \
+#--gpu_ids $gpu --batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq "$freq" \
+#--results_dir "$result" --checkpoints_dir "$ckpt" \
+#--norm_mode clade_variation \
+#--pad 'reflect' \
+#--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--noise_nc 'all'
 
 ############################################
 ## clade ablation study

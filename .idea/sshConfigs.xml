@@ -4,7 +4,7 @@
     <configs>
       <sshConfig authType="PASSWORD" host="113.198.60.50" id="ce54b663-9b62-49ca-bc63-b42bd55286e5" port="10022" nameFormat="DESCRIPTIVE" username="oem" />
       <sshConfig authType="PASSWORD" host="113.198.60.51" id="d16ca7b4-d659-4626-a1a5-d16c21ba7867" port="10022" nameFormat="DESCRIPTIVE" username="oem" />
-      <sshConfig authType="PASSWORD" host="14.52.86.212" id="e4446e90-81f9-4e77-92f8-cb19ef3213eb" port="1044" nameFormat="DESCRIPTIVE" username="oem" />
+      <sshConfig authType="PASSWORD" host="113.198.60.56" id="ecceb689-2309-4fcc-9b48-1d12ad6eee93" port="10022" nameFormat="DESCRIPTIVE" username="multiai6" />
     </configs>
   </component>
 </project>
