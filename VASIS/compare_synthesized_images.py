@@ -41,11 +41,11 @@ save_dir = parser.save_dir
 if parser.dataset == 'cityscapes':
     compare_dir = "./results/cityscapes"
     save_dir = save_dir + '_cityscapes'
-    ours = "Cityscapes_AreaNorm_2Linear_2Conv3x3_Conv1x1"
+    ours = "2201_sVASIS_norm_cat_all_learn_one"
     parser.dirs = [
         f"{compare_dir}/spade_cityscapes",
         f"{compare_dir}/clade_cityscapes",
-        # f"{compare_dir}/clade_dist_ade20k",
+        f"{compare_dir}/clade_cityscapes_dist",
         f"{compare_dir}/{ours}",
     ]
     source_img_dir = "./../datasets/cityscapes/leftImg8bit_256/val/"
@@ -53,7 +53,7 @@ if parser.dataset == 'cityscapes':
 elif parser.dataset == 'ade20k':
     compare_dir = "./results/ade20k"
     save_dir = save_dir + '_ade20k'
-    ours = "1105_sVASIS_learnRelativeAll_all_batch28_epoch300_oem"
+    ours = "2201_spade_variation_norm_cat_all_learn_one_epoch300_batch32"
     parser.dirs = [
         f"{compare_dir}/spade_ade20k",
         f"{compare_dir}/clade_ade20k",

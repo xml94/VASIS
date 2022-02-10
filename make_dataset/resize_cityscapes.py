@@ -13,6 +13,7 @@ parser = parser.parse_args()
 # images
 orig_root = osp.join(parser.dataset_dir, 'leftImg8bit/val')
 tgt_root = osp.join(parser.dataset_dir, 'leftImg8bit_256/val')
+os.makedirs(tgt_root, exist_ok=True)
 dir_names = os.listdir(orig_root)
 for dir_ in dir_names:
     img_names = os.listdir(os.path.join(orig_root, dir_))

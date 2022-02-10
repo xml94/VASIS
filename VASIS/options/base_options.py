@@ -20,13 +20,15 @@ class BaseOptions():
     def initialize(self, parser):
         parser.add_argument('--vis', type=int, default=0, help='if visualize the feature map')
         parser.add_argument('--pad', type=str, default='reflect', help='padding type', choices=['zero', 'reflect'])
-        parser.add_argument('--pos', type=str, default='one',
-                            choices=['no', 'learn', 'fix', 'learn_relative', 'relative', 'fix_learn_relative'],
+        parser.add_argument('--pos', type=str, default='fix_learn_relative',
+                            choices=['no', 'fix', 'learn', 'relative',
+                                     'fix_learn', 'fix_relative', 'learn_relative',
+                                     'fix_learn_relative', ],
                             help='if use position in normalization')
         parser.add_argument('--pos_nc', type=str, default='one', help='number of channels for pos',
                             choices=['one', 'all'])
         parser.add_argument('--mode_noise', type=str, default='norm_cat',
-                            choices=['norm_cat', 'mul_cat', 'norm_avg', 'mul_avg'])
+                            choices=['norm_cat', 'mul_cat', 'norm_avg', 'mul_avg', 'random_cat', 'random_avg'])
         parser.add_argument('--noise_nc', type=str, default='one', choices=['zero', 'one', 'all'],
                             help='the dimension of the learned mean and var for noise: zero, one, all')
         parser.add_argument('--height', type=int, default=0, help='the height in every scale, it will be rewritten')

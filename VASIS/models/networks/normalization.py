@@ -151,8 +151,8 @@ class VariationAwareSPADE(nn.Module):
         self.pos = args.pos
         self.height = args.height
         self.width = args.width
-        self.mode_noise = args.mode_noise
         pad = args.pad
+        self.mode_noise = args.mode_noise
         self.check_flop = args.check_flop
 
         assert config_text.startswith('spade')
@@ -201,8 +201,8 @@ class VariationAwareSPADE(nn.Module):
             self.pos_nc_in = 0
         elif self.pos == 'learn':
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
             self.pos_nc_in = 2
         elif self.pos == 'fix':
             self.pos_nc_in = 2
@@ -215,11 +215,31 @@ class VariationAwareSPADE(nn.Module):
             self.beta_pos = self.gamma_pos
         elif self.pos == 'relative':
             self.pos_nc_in = 2
+        elif self.pos == 'fix_learn':
+            self.pos_nc_in = 4
+            H, W = self.height, self.width
+            x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+            y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+            x = torch.cat([x] * W, dim=1).unsqueeze(0)
+            y = torch.cat([y] * H, dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
+            self.beta_pos = self.gamma_pos
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
+        elif self.pos == 'fix_relative':
+            self.pos_nc_in = 4
+            H, W = self.height, self.width
+            x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+            y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+            x = torch.cat([x] * W, dim=1).unsqueeze(0)
+            y = torch.cat([y] * H, dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
+            self.beta_pos = self.gamma_pos
         elif self.pos == 'learn_relative':
             self.pos_nc_in = 4
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
         elif self.pos == 'fix_learn_relative':
             self.pos_nc_in = 6
             H, W = self.height, self.width
@@ -276,7 +296,7 @@ class VariationAwareSPADE(nn.Module):
         arg_mask = torch.argmax(mask, 1).long()
         gamma_noise_gamma = F.embedding(arg_mask, self.gamma_noise_gamma).permute(0, 3, 1, 2)
         beta_noise_gamma = F.embedding(arg_mask, self.beta_noise_gamma).permute(0, 3, 1, 2)
-        if self.mode_noise == 'norm':
+        if 'norm' in self.mode_noise:
             gamma_noise_beta = F.embedding(arg_mask, self.gamma_noise_beta).permute(0, 3, 1, 2)
             beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
         B, _, H, W = mask.size()
@@ -285,12 +305,16 @@ class VariationAwareSPADE(nn.Module):
             noise_2 = torch.rand((B, self.norm_nc - self.seg_nc, H, W), device=mask.device)
         else:
             assert 'avg' in self.mode_noise
-            noise_1 = torch.rand((B, 1, H, W), device=mask.device)
-            noise_2 = torch.rand((B, 1, H, W), device=mask.device)
-        if self.mode_noise == 'norm':
+            noise_1 = torch.rand((B, self.norm_nc, H, W), device=mask.device)
+            noise_2 = torch.rand((B, self.norm_nc, H, W), device=mask.device)
+        if 'random' in self.mode_noise:
+            gamma_noise = noise_1
+            beta_noise = noise_2
+        elif 'norm' in self.mode_noise:
             gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
             beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
         else:
+            assert 'mul' in self.mode_noise
             gamma_noise = noise_1 * gamma_noise_gamma
             beta_noise = noise_2 * beta_noise_gamma
         return gamma_noise, beta_noise
@@ -315,18 +339,34 @@ class VariationAwareSPADE(nn.Module):
             gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(x.device)))
             beta = beta * (1 + self.conv_pos_beta(self.beta_pos.unsqueeze(0).to(x.device)))
         elif self.pos == 'learn':
-            gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(x.device)))
-            beta = beta * (1 + self.conv_pos_beta(self.beta_pos.unsqueeze(0).to(x.device)))
+            gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos_learn.unsqueeze(0).to(x.device)))
+            beta = beta * (1 + self.conv_pos_beta(self.beta_pos_learn.unsqueeze(0).to(x.device)))
         elif self.pos == 'relative':
             assert input_dist is not None
             input_dist = F.interpolate(input_dist, size=x.size()[2:], mode='nearest')
             gamma = gamma * (1 + self.conv_pos_gamma(input_dist))
             beta = beta * (1 + self.conv_pos_beta(input_dist))
-        elif self.pos == 'learn_relative':
+        elif self.pos == 'fix_learn':
+            gamma_pos_learn = self.gamma_pos_learn.unsqueeze(0).to(x.device)
+            beta_pos_learn = self.beta_pos_learn.unsqueeze(0).to(x.device)
+            gamma_pos = torch.cat([self.gamma_pos.unsqueeze(0).to(x.device), gamma_pos_learn], dim=1)
+            beta_pos = torch.cat([self.beta_pos.unsqueeze(0).to(x.device), beta_pos_learn], dim=1)
+            gamma = gamma * (1 + self.conv_pos_gamma(gamma_pos))
+            beta = beta * (1 + self.conv_pos_beta(beta_pos))
+        elif self.pos == 'fix_relative':
             assert input_dist is not None
             input_dist = F.interpolate(input_dist, size=x.size()[2:], mode='nearest')
             gamma_pos = self.gamma_pos.unsqueeze(0).expand_as(input_dist)
             beta_pos = self.beta_pos.unsqueeze(0).expand_as(input_dist)
+            gamma_pos = torch.cat([gamma_pos.to(x.device), input_dist], dim=1)
+            beta_pos = torch.cat([beta_pos.to(x.device), input_dist], dim=1)
+            gamma = gamma * (1 + self.conv_pos_gamma(gamma_pos))
+            beta = beta * (1 + self.conv_pos_beta(beta_pos))
+        elif self.pos == 'learn_relative':
+            assert input_dist is not None
+            input_dist = F.interpolate(input_dist, size=x.size()[2:], mode='nearest')
+            gamma_pos = self.gamma_pos_learn.unsqueeze(0).expand_as(input_dist)
+            beta_pos = self.beta_pos_learn.unsqueeze(0).expand_as(input_dist)
             gamma_pos = torch.cat([gamma_pos.to(x.device), input_dist], dim=1)
             beta_pos = torch.cat([beta_pos.to(x.device), input_dist], dim=1)
             gamma = gamma * (1 + self.conv_pos_gamma(gamma_pos))
@@ -413,11 +453,13 @@ class VariationAffineCLADE(nn.Module):
         super(VariationAffineCLADE, self).__init__()
         self.args = args
         self.label_nc = args.label_nc_
-        self.feature_nc = args.norm_nc
+        self.norm_nc = args.norm_nc
         self.ctrl_noise = args.noise_nc
         self.pos = args.pos
         self.height = args.height
         self.width = args.width
+        self.mode_noise = args.mode_noise
+        self.check_flop = args.check_flop
 
         self.set_nc()
         self.init_net()
@@ -425,14 +467,19 @@ class VariationAffineCLADE(nn.Module):
     def set_nc(self):
         # set the numbers of channel
         if self.ctrl_noise == 'zero':
-            self.seg_nc = self.feature_nc
+            self.seg_nc = self.norm_nc
             self.noise_nc = 0
         elif self.ctrl_noise == 'one':
-            self.seg_nc = self.feature_nc // 2
+            self.seg_nc = self.norm_nc // 2
             self.noise_nc = 1
         elif self.ctrl_noise == 'all':
-            self.seg_nc = self.feature_nc // 2
-            self.noise_nc = self.feature_nc - self.seg_nc
+            if 'avg' in self.mode_noise:
+                self.seg_nc = self.norm_nc
+                self.noise_nc = self.norm_nc
+            else:
+                assert 'cat' in self.mode_noise
+                self.seg_nc = self.norm_nc // 2
+                self.noise_nc = self.norm_nc - self.seg_nc
         else:
             raise NotImplementedError('Please check the noise_nc: <zero, one, all>.')
 
@@ -459,11 +506,6 @@ class VariationAffineCLADE(nn.Module):
             self.gamma_pos = None
             self.beta_pos = None
             self.pos_nc_in = 0
-        elif self.pos == 'learn':
-            H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
-            self.pos_nc_in = 2
         elif self.pos == 'fix':
             self.pos_nc_in = 2
             H, W = self.height, self.width
@@ -473,15 +515,52 @@ class VariationAffineCLADE(nn.Module):
             y = torch.cat([y] * H, dim=0).unsqueeze(0)
             self.gamma_pos = torch.cat([x, y], dim=0)
             self.beta_pos = self.gamma_pos
+        elif self.pos == 'learn':
+            H, W = self.height, self.width
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.pos_nc_in = 2
         elif self.pos == 'relative':
             self.pos_nc_in = 2
+        elif self.pos == 'fix_learn':
+            self.pos_nc_in = 4
+            H, W = self.height, self.width
+            x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+            y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+            x = torch.cat([x] * W, dim=1).unsqueeze(0)
+            y = torch.cat([y] * H, dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
+            self.beta_pos = self.gamma_pos
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
+        elif self.pos == 'fix_relative':
+            self.pos_nc_in = 4
+            H, W = self.height, self.width
+            x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+            y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+            x = torch.cat([x] * W, dim=1).unsqueeze(0)
+            y = torch.cat([y] * H, dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
+            self.beta_pos = self.gamma_pos
         elif self.pos == 'learn_relative':
             self.pos_nc_in = 4
             H, W = self.height, self.width
-            self.gamma_pos = nn.Parameter(torch.randn(2, H, W))
-            self.beta_pos = nn.Parameter(torch.randn(2, H, W))
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
+        elif self.pos == 'fix_learn_relative':
+            self.pos_nc_in = 6
+            H, W = self.height, self.width
+            x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+            y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+            x = torch.cat([x] * W, dim=1).unsqueeze(0)
+            y = torch.cat([y] * H, dim=0).unsqueeze(0)
+            self.gamma_pos = torch.cat([x, y], dim=0)
+            self.beta_pos = self.gamma_pos
+            self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
+            self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
         else:
             raise NotImplementedError('ERROR: please check the pos type: learn, fix, no')
+
         if self.pos_nc_in > 0:
             if self.args.pos_nc == 'one':
                 self.conv_pos_gamma = nn.Conv2d(self.pos_nc_in, 1, 1)
@@ -503,24 +582,60 @@ class VariationAffineCLADE(nn.Module):
     def affine_noise(self, mask):
         arg_mask = torch.argmax(mask, 1).long()
         gamma_noise_gamma = F.embedding(arg_mask, self.gamma_noise_gamma).permute(0, 3, 1, 2)
-        gamma_noise_beta = F.embedding(arg_mask, self.gamma_noise_beta).permute(0, 3, 1, 2)
         beta_noise_gamma = F.embedding(arg_mask, self.beta_noise_gamma).permute(0, 3, 1, 2)
-        beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
+        if 'norm' in self.mode_noise:
+            gamma_noise_beta = F.embedding(arg_mask, self.gamma_noise_beta).permute(0, 3, 1, 2)
+            beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
         B, _, H, W = mask.size()
-        noise_1 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
-        noise_2 = torch.randn((B, self.feature_nc - self.seg_nc, H, W), device=mask.device)
-        gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
-        beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
+        if 'cat' in self.mode_noise:
+            noise_1 = torch.rand((B, self.norm_nc - self.seg_nc, H, W), device=mask.device)
+            noise_2 = torch.rand((B, self.norm_nc - self.seg_nc, H, W), device=mask.device)
+        else:
+            assert 'avg' in self.mode_noise
+            noise_1 = torch.rand((B, self.norm_nc, H, W), device=mask.device)
+            noise_2 = torch.rand((B, self.norm_nc, H, W), device=mask.device)
+        if 'norm' in self.mode_noise:
+            gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
+            beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
+        elif 'random' in self.mode_noise:
+            gamma_noise = noise_1
+            beta_noise = noise_2
+        else:
+            assert 'mul' in self.mode_noise
+            gamma_noise = noise_1 * gamma_noise_gamma
+            beta_noise = noise_2 * beta_noise_gamma
         return gamma_noise, beta_noise
 
     def forward(self, input, mask, input_dist=None):
+        if self.check_flop and input_dist is None:
+            B, _, H, W = input.size()
+            input_dist = torch.ones(B, 2, H, W).to(input.device)
         # input: only include semantic segmentation, no instance map
         gamma_seg, beta_seg = self.affine_seg(mask)
 
-        if self.pos_nc_in == 2:
-            gamma_seg = gamma_seg * (1+ self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(input.device)))
+        # position code
+        if self.pos == 'no':
+            pass
+        elif self.pos == 'fix':
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(self.gamma_pos.unsqueeze(0).to(input.device)))
             beta_seg = beta_seg * (1 + self.conv_pos_beta(self.beta_pos.unsqueeze(0).to(input.device)))
-        elif self.pos_nc_in == 4:
+        elif self.pos == 'learn':
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(self.gamma_pos_learn.unsqueeze(0).to(input.device)))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(self.beta_pos_learn.unsqueeze(0).to(input.device)))
+        elif self.pos == 'relative':
+            assert input_dist is not None
+            input_dist = F.interpolate(input_dist, size=input.size()[2:], mode='nearest')
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(input_dist))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(input_dist))
+        elif self.pos == 'fix_learn':
+            gamma_pos_learn = self.gamma_pos_learn.unsqueeze(0).to(input.device)
+            beta_pos_learn = self.beta_pos_learn.unsqueeze(0).to(input.device)
+            gamma_pos = torch.cat([self.gamma_pos.unsqueeze(0).to(input.device), gamma_pos_learn], dim=1)
+            beta_pos = torch.cat([self.beta_pos.unsqueeze(0).to(input.device), beta_pos_learn], dim=1)
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(gamma_pos))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(beta_pos))
+        elif self.pos == 'fix_relative':
+            assert input_dist is not None
             input_dist = F.interpolate(input_dist, size=input.size()[2:], mode='nearest')
             gamma_pos = self.gamma_pos.unsqueeze(0).expand_as(input_dist)
             beta_pos = self.beta_pos.unsqueeze(0).expand_as(input_dist)
@@ -528,12 +643,39 @@ class VariationAffineCLADE(nn.Module):
             beta_pos = torch.cat([beta_pos.to(input.device), input_dist], dim=1)
             gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(gamma_pos))
             beta_seg = beta_seg * (1 + self.conv_pos_beta(beta_pos))
+        elif self.pos == 'learn_relative':
+            assert input_dist is not None
+            input_dist = F.interpolate(input_dist, size=input.size()[2:], mode='nearest')
+            gamma_pos = self.gamma_pos_learn.unsqueeze(0).expand_as(input_dist)
+            beta_pos = self.beta_pos_learn.unsqueeze(0).expand_as(input_dist)
+            gamma_pos = torch.cat([gamma_pos.to(input.device), input_dist], dim=1)
+            beta_pos = torch.cat([beta_pos.to(input.device), input_dist], dim=1)
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(gamma_pos))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(beta_pos))
+        elif self.pos == 'fix_learn_relative':
+            assert input_dist is not None
+            input_dist = F.interpolate(input_dist, size=input.size()[2:], mode='nearest')
+            gamma_pos = self.gamma_pos.unsqueeze(0).expand_as(input_dist)
+            beta_pos = self.beta_pos.unsqueeze(0).expand_as(input_dist)
+            gamma_pos_learn = self.gamma_pos_learn.unsqueeze(0).expand_as(input_dist)
+            beta_pos_learn = self.beta_pos_learn.unsqueeze(0).expand_as(input_dist)
+            gamma_pos = torch.cat([gamma_pos.to(input.device), gamma_pos_learn.to(input.device), input_dist], dim=1)
+            beta_pos = torch.cat([beta_pos.to(input.device), beta_pos_learn.to(input.device), input_dist], dim=1)
+            gamma_seg = gamma_seg * (1 + self.conv_pos_gamma(gamma_pos))
+            beta_seg = beta_seg * (1 + self.conv_pos_beta(beta_pos))
+        else:
+            raise NotImplementedError('Checking please the position mode...')
 
         # semantic noise
         if self.noise_nc > 0:
             gamma_noise, beta_noise = self.affine_noise(mask)
-            gamma_seg = torch.cat([gamma_seg, gamma_noise], dim=1)
-            beta_seg = torch.cat([beta_seg, beta_noise], dim=1)
+            if 'cat' in self.mode_noise:
+                gamma_seg = torch.cat([gamma_seg, gamma_noise], dim=1)
+                beta_seg = torch.cat([beta_seg, beta_noise], dim=1)
+            else:
+                assert 'avg' in self.mode_noise
+                gamma_seg = (gamma_seg + gamma_noise) / 2
+                beta_seg = (beta_seg + beta_noise) / 2
 
         x = input * gamma_seg + beta_seg
         return x
@@ -548,6 +690,7 @@ class SPADELight(nn.Module):
         parsed = re.search('spade(\D+)(\d)x\d', args.config_text)
         param_free_norm_type = str(parsed.group(1))
         ks = int(parsed.group(2))
+        self.check_flop = args.check_flop
 
         if param_free_norm_type == 'instance':
             self.param_free_norm = nn.InstanceNorm2d(args.norm_nc, affine=False)
@@ -587,6 +730,7 @@ class SPADELight(nn.Module):
 class ClassAffine(nn.Module):
     def __init__(self, args):
         super(ClassAffine, self).__init__()
+        self.check_flop = args.check_flop
         self.add_dist = args.add_dist
         self.affine_nc = args.norm_nc
         self.label_nc = args.label_nc_
@@ -628,6 +772,9 @@ class ClassAffine(nn.Module):
         return class_weight, class_bias
 
     def forward(self, input, mask, input_dist=None):
+        if self.check_flop and input_dist is None:
+            B, _, H, W = input.size()
+            input_dist = torch.ones(B, 2, H, W).to(input.device)
         # class_weight, class_bias = self.affine_gather(input, mask)
         # class_weight, class_bias = self.affine_einsum(mask)
         class_weight, class_bias = self.affine_embed(mask)

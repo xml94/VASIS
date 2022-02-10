@@ -12,12 +12,13 @@ batch_size: how many batches when computing
 EOF
 
 
-export model="CLADE-variation"
+export model="VASIS"
 export epoch="best"
 export gpu=2
 export batch_size=1
-export date=1001
+export date=2201
 export device=oem
-export expr_name=1030_cityscapes_clade_variation_reflect_learnRelativeAll_all_oem
+export norm_mode=spade_variation
+export name="$date"_"$norm_mode"_norm_cat_one_learn_one
 
-sh ./evaluation/drn-master/eval_city.sh $expr_name $model $epoch $gpu $batch_size
+sh ./evaluation/drn-master/eval_city.sh $name $model $epoch $gpu $batch_size

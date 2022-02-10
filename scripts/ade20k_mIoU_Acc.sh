@@ -16,8 +16,9 @@ export model="VASIS"
 export epoch="best"
 export gpu=1
 export batch_size=1
-export date=1105
+export date=2201
 export device=oem
-export expr_name="$date"_sVASIS_learnRelativeAll_all_batch28_epoch300_oem50_"$device"
+export norm_mode=spade_variation
+export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_one_epoch300_batch32
 
 sh ./evaluation/semantic-segmentation-pytorch-master/eval_ade.sh $model $expr_name $epoch $gpu

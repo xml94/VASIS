@@ -43,7 +43,7 @@ class Pix2PixModel(torch.nn.Module):
                     )
                 elif self.opt.dataset_mode == 'coco':
                     macs, params = get_model_complexity_info(
-                        self.netG, (181, 8, 8), as_strings=True,
+                        self.netG, (184, 8, 8), as_strings=True,
                         print_per_layer_stat=False, verbose=False
                     )
                 elif self.opt.dataset_mode == 'cityscapes':
