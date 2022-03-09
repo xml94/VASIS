@@ -14,11 +14,11 @@ EOF
 
 export model="VASIS"
 export epoch="best"
-export gpu=1
+export gpu=2
 export batch_size=1
 export date=2201
 export device=oem
 export norm_mode=spade_variation
-export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_one_epoch300_batch32
+export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_one
 
 sh ./evaluation/semantic-segmentation-pytorch-master/eval_ade.sh $model $expr_name $epoch $gpu

@@ -23,3 +23,4 @@ python ./../datasets/cocostuff/coco_generate_instance_map.py \
   --input_label_dir './val_label' --output_instance_dir 'val_inst'
 
 # make relative distance map
+python ./../VASIS/util/cal_dist_masks.py --path ./../datasets/cocostuff --dataset coco

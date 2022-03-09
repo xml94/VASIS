@@ -1,5 +1,5 @@
 export gpu=1
-export batchSize=16
+export batchSize=1
 export epoch=best
 export date=2201
 export device=oem
@@ -8,7 +8,7 @@ export result="./results/ade20k"
 
 export norm_mode=spade_variation
 
-export name="$date"_"$norm_mode"_norm_cat_all_learn_one_epoch300_batch32
+export name="$date"_"$norm_mode"_norm_cat_all_learn_one
 python test.py --name $name \
 --batchSize $batchSize \
 --gpu_ids $gpu --which_epoch $epoch \
@@ -18,7 +18,8 @@ python test.py --name $name \
 --norm_mode "$norm_mode" \
 --pad 'reflect' \
 --mode_noise 'norm_cat' --noise_nc 'all' \
---pos 'learn' --pos_nc 'one' --add_dist --dist_type 'offline' \
+--pos 'learn' --pos_nc 'one'
+#--add_dist --dist_type 'offline'
 
 # compute FID
 export real_path=./../datasets/ADEChallengeData2016/

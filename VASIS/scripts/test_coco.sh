@@ -4,11 +4,13 @@ export gpu=1
 export batchSize=1
 export epoch=best
 export device=oem
-export date=1105
+export date=2201
 export result="results/coco"
 export ckpt="checkpoints/coco"
-export name="$date"_sVASIS_learnRelativeAll_all_epoch150_batch28_"$device"
 
+
+export norm_mode=spade_variation
+export name="$date"_"$norm_mode"_norm_cat_all_learn_one
 
 python test.py --name $name \
 --norm_mode spade_variation --batchSize $batchSize \
@@ -16,9 +18,9 @@ python test.py --name $name \
 --dataset_mode coco --dataroot "./../datasets/cocostuff" \
 --results_dir "$result" --checkpoints_dir $ckpt \
 --pad 'reflect' \
---pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'online' \
---noise_nc 'all'
-#--vis 1
+--mode_noise 'norm_cat' --noise_nc 'all' \
+--pos 'learn' --pos_nc 'one' --add_dist --dist_type 'offline' \
+--check_flop 1
 
 
 # compute FID

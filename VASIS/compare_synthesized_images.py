@@ -31,7 +31,7 @@ parser.add_argument('--save_dir', type=str, default="compared",
                     help='the directory to save html page')
 parser.add_argument('--prefix', type=str, default="test_best/images/synthesized_image",
                     help='the prefix for each directory: test_latest/images/synthesized_image')
-parser.add_argument('--dataset', type=str, default='ade20k',
+parser.add_argument('--dataset', type=str, default='cityscapes',
                     help='cityscapes, ade20k, cocostuff')
 parser = parser.parse_args()
 
@@ -41,24 +41,26 @@ save_dir = parser.save_dir
 if parser.dataset == 'cityscapes':
     compare_dir = "./results/cityscapes"
     save_dir = save_dir + '_cityscapes'
-    ours = "2201_sVASIS_norm_cat_all_learn_one"
+    ours = "2201_spade_variation_norm_cat_all_learn_one"
     parser.dirs = [
         f"{compare_dir}/spade_cityscapes",
+        f"{compare_dir}/{ours}",
         f"{compare_dir}/clade_cityscapes",
         f"{compare_dir}/clade_cityscapes_dist",
-        f"{compare_dir}/{ours}",
+        f"{compare_dir}/2201_clade_variation_norm_avg_all_fix_learn_relative_all",
     ]
     source_img_dir = "./../datasets/cityscapes/leftImg8bit_256/val/"
     source_seg_dir = f"{compare_dir}/{ours}/test_best/images/input_label/"
 elif parser.dataset == 'ade20k':
     compare_dir = "./results/ade20k"
     save_dir = save_dir + '_ade20k'
-    ours = "2201_spade_variation_norm_cat_all_learn_one_epoch300_batch32"
+    ours = "2201_spade_variation_norm_cat_all_learn_one"
     parser.dirs = [
         f"{compare_dir}/spade_ade20k",
+        f"{compare_dir}/{ours}",
         f"{compare_dir}/clade_ade20k",
         f"{compare_dir}/clade_dist_ade20k",
-        f"{compare_dir}/{ours}",
+        f"{compare_dir}/2201_clade_variation_norm_avg_all_fix_learn_relative_all",
     ]
     source_img_dir = "./../datasets/ADEChallengeData2016/images_256/validation/"
     source_seg_dir = f"{compare_dir}/{ours}/test_best/images/input_label/"

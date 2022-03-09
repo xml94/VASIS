@@ -320,6 +320,10 @@ class VariationAwareSPADE(nn.Module):
         return gamma_noise, beta_noise
 
     def forward(self, x, segmap, input_dist=None):
+        # save the learned position code
+        # import numpy as np
+        # np.save(f'{self.width}.npy', self.gamma_pos_learn.detach().cpu().numpy())
+
         if self.check_flop and input_dist is None:
             B, _, H, W = x.size()
             input_dist = torch.ones(B, 2, H, W).to(x.device)

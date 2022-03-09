@@ -18,7 +18,7 @@ export gpu=2
 export batch_size=1
 export date=2201
 export device=oem
-export norm_mode=spade_variation
-export name="$date"_"$norm_mode"_norm_cat_one_learn_one
+export norm_mode=clade_variation
+export name="$date"_"$norm_mode"_norm_avg_learn_all
 
 sh ./evaluation/drn-master/eval_city.sh $name $model $epoch $gpu $batch_size
