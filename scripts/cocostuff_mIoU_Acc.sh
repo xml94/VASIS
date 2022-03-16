@@ -14,7 +14,7 @@ EOF
 
 export model="VASIS"
 export epoch="best"
-export gpu=0
+export gpu=1
 export batch_size=1
 export date=2201
 export device=oem

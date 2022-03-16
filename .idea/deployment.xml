@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="50" remoteFilesAllowedToDisappearOnAutoupload="false" showAutoUploadSettingsWarning="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="51" remoteFilesAllowedToDisappearOnAutoupload="false" showAutoUploadSettingsWarning="false">
     <serverData>
       <paths name="50">
         <serverdata>
@@ -23,7 +23,7 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="multiai6@113.198.60.56:10022">
+      <paths name="multiai6">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />

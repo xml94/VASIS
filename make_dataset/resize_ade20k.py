@@ -1,4 +1,4 @@
-# resize image to 512, 256 to display
+# resize image to 256, 256 to display
 import os
 from PIL import Image
 import argparse

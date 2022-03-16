@@ -28,7 +28,7 @@ export ckpt="./checkpoints/coco"
 #--check_flop 1
 
 
-export norm_mode=clade_variation
+export norm_mode=spade_variation
 export batch=28
 export niter=150
 export niter_decay=0
