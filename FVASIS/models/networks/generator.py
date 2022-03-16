@@ -33,16 +33,22 @@ class FVASISGenerator(BaseNetwork):
         else:
             label_nc = self.opt.label_nc + 1
         model = [
-            nn.ReplicationPad2d(1),
-            nn.Conv2d(label_nc, nef, kernel_size=3, stride=1),
+            nn.ReplicationPad2d(4),
+            nn.Conv2d(label_nc, nef, kernel_size=9, stride=1),
             nn.InstanceNorm2d(nef),
             nn.ReLU(nef),
-            nn.ReplicationPad2d(1),
-            nn.Conv2d(nef, nef, kernel_size=3, stride=1),
+            nn.ReplicationPad2d(4),
+            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
             nn.InstanceNorm2d(nef),
             nn.ReLU(nef),
-            nn.ReplicationPad2d(1),
-            nn.Conv2d(nef, nef, kernel_size=3, stride=1),
+            nn.ReplicationPad2d(4),
+            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
+            nn.ReLU(nef),
+            nn.ReplicationPad2d(4),
+            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
+            nn.ReLU(nef),
+            nn.ReplicationPad2d(4),
+            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
         ]
         return nn.Sequential(*model)
 
@@ -70,12 +76,12 @@ class FVASISGenerator(BaseNetwork):
             label_nc = self.opt.label_nc + 1
         self.weight_1 = nn.Parameter(torch.randn(label_nc, nef * nef))
         self.weight_2 = nn.Parameter(torch.randn(label_nc, nef * nef))
-        # self.weight_3 = nn.Parameter(torch.randn(label_nc, nef * nef))
+        self.weight_3 = nn.Parameter(torch.randn(label_nc, nef * nef))
         # self.weight_4 = nn.Parameter(torch.randn(label_nc, nef * nef))
         self.weight_5 = nn.Parameter(torch.randn(label_nc, nef * 3))
         self.b_1 = nn.Parameter(torch.randn(label_nc, nef))
         self.b_2 = nn.Parameter(torch.randn(label_nc, nef))
-        # self.b_3 = nn.Parameter(torch.randn(label_nc, nef))
+        self.b_3 = nn.Parameter(torch.randn(label_nc, nef))
         # self.b_4 = nn.Parameter(torch.randn(label_nc, nef))
         self.b_5 = nn.Parameter(torch.randn(label_nc, 3))
 
@@ -117,20 +123,19 @@ class FVASISGenerator(BaseNetwork):
         x = torch.matmul(x, weight_2) + b_2
         x = F.relu(x)
 
-        # weight_3 = self.affine_layout(layout, self.weight_3, nef, nef)
-        # b_3 = self.affine_layout(layout, self.b_3, nef, nef, mode='b')
-        # x = torch.matmul(x, weight_3) + b_3
+        weight_3 = self.affine_layout(layout, self.weight_3, nef, nef)
+        b_3 = self.affine_layout(layout, self.b_3, nef, nef, mode='b')
+        x = torch.matmul(x, weight_3) + b_3
         x = F.relu(x)
 
         # weight_4 = self.affine_layout(layout, self.weight_4, nef, nef)
         # b_4 = self.affine_layout(layout, self.b_4, nef, nef, mode='b')
         # x = torch.matmul(x, weight_4) + b_4
-        x = F.relu(x)
+        # x = F.relu(x)
 
         weight_5 = self.affine_layout(layout, self.weight_5, nef, 3)
         b_5 = self.affine_layout(layout, self.b_5, nef, 3, mode='b')
         x = torch.matmul(x, weight_5) + b_5
-        x = F.relu(x)
 
         x = torch.tanh(x)
         x = x.view(B, H, W, 3).permute(0, 3, 1, 2)
