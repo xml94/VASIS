@@ -3,7 +3,7 @@
 #############
 export gpu=0,1,2,3
 export batch=16
-export freq=10
+export freq=1
 export niter=100
 export niter_decay=100
 export device=oem
