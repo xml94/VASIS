@@ -12,8 +12,20 @@ export result="./results/cityscapes"
 export ckpt="./checkpoints/cityscapes"
 
 
+#export batch=8
+#python train.py --name "$date"_FVASIS__ \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
+#--gpu_ids $gpu \
+#--batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq \
+#--results_dir "$result" --checkpoints_dir $ckpt \
+#--height 256 --width 512 \
+#--add_dist --dist_type 'offline' \
+#--check_flop 1 \
+#--netG FVASIS --continue_train
+
 export batch=8
-python train.py --name "$date"_MLP \
+python train.py --name "$date"_transformer \
 --dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
 --gpu_ids $gpu \
 --batchSize $batch --niter $niter --niter_decay $niter_decay \
@@ -22,4 +34,4 @@ python train.py --name "$date"_MLP \
 --height 256 --width 512 \
 --add_dist --dist_type 'offline' \
 --check_flop 1 \
---netG FVASIS
+--netG FVASISTRANS

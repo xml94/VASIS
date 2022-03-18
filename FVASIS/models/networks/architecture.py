@@ -10,6 +10,7 @@ import torchvision
 import torch.nn.utils.spectral_norm as spectral_norm
 from models.networks.normalization import SPADE, SPADELight, VariationAwareCLADE, VariationAwareSPADE
 from math import pi
+from einops import rearrange, repeat
 
 # ResNet block that uses SPADE.
 # It differs from the ResNet block of pix2pixHD in that
@@ -193,6 +194,12 @@ class MLPBlock(nn.Module):
         self.weight = nn.Parameter(torch.randn(label_nc, fc_in * fc_out))
         self.bias = nn.Parameter(torch.zeros(label_nc, fc_out))
         self.init_pos()
+        self.model = nn.Sequential(
+            nn.Conv2d(fc_out, fc_out, 3, 1, 1),
+            nn.InstanceNorm2d(fc_out),
+            nn.ReLU(),
+            nn.Conv2d(fc_out, fc_out, 3, 1, 1),
+        )
 
     def init_pos(self):
         H, W = self.height, self.width
@@ -253,9 +260,8 @@ class MLPBlock(nn.Module):
         pl = self.pl.unsqueeze(0).expand(B, 2, h, w).to(device)
         coords = self.coords.unsqueeze(0).expand(B, 4, h, w).to(device)
         pr = F.interpolate(pr, size=[h, w], mode='nearest')
-        # noise = torch.randn((B, 20, h, w), device=device)
         pos = torch.cat([pa, pl, pr, coords], dim=1)
-        x = x + self.conv(pos)
+        x = x * self.conv(pos)
         x = x.contiguous().permute(0, 2, 3, 1).view(B, h, w, 1, C)
         layout = F.interpolate(layout, size=[h, w], mode='nearest')
         weight, bias = self.affine_layout(layout)
@@ -263,7 +269,75 @@ class MLPBlock(nn.Module):
         x = x.squeeze(3).permute(0, 3, 1, 2)
         x = F.instance_norm(x)
         x = F.leaky_relu(x)
-        # x = self.conv(x)
-        # x = F.instance_norm(x)
-        # x = F.leaky_relu(x)
+
+        x = self.model(x) + x
+        return x
+
+
+class PreNorm(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.fn = fn
+    def forward(self, x, **kwargs):
+        return self.fn(self.norm(x), **kwargs)
+
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout = 0.):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+    def forward(self, x):
+        return self.net(x)
+
+
+class Attention(nn.Module):
+    def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
+        super().__init__()
+        inner_dim = dim_head *  heads
+        project_out = not (heads == 1 and dim_head == dim)
+
+        self.heads = heads
+        self.scale = dim_head ** -0.5
+
+        self.attend = nn.Softmax(dim = -1)
+        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
+
+        self.to_out = nn.Sequential(
+            nn.Linear(inner_dim, dim),
+            nn.Dropout(dropout)
+        ) if project_out else nn.Identity()
+
+    def forward(self, x):
+        qkv = self.to_qkv(x).chunk(3, dim = -1)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+
+        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+
+        attn = self.attend(dots)
+
+        out = torch.matmul(attn, v)
+        out = rearrange(out, 'b h n d -> b n (h d)')
+        return self.to_out(out)
+
+
+class Transformer(nn.Module):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.):
+        super().__init__()
+        self.layers = nn.ModuleList([])
+        for _ in range(depth):
+            self.layers.append(nn.ModuleList([
+                PreNorm(dim, Attention(dim, heads=heads, dim_head=dim_head, dropout=dropout)),
+                PreNorm(dim, FeedForward(dim, mlp_dim, dropout=dropout))
+            ]))
+    def forward(self, x):
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
         return x
