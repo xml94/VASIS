@@ -15,25 +15,102 @@ import numpy as np
 from math import pi
 from models.networks.cal_dist import cal_connectedComponents as compute_dist
 from models.networks.architecture import MLPBlock
+from einops.layers.torch import Rearrange
+from models.networks.architecture import Transformer
 
 
-class FVASISTRANSGENRATOR(BaseNetwork):
+class FVASISTRANSGenerator(BaseNetwork):
     def __init__(self, opt):
-        super(FVASISTRANSGENRATOR, self).__init__()
+        super(FVASISTRANSGenerator, self).__init__()
         self.opt = opt
+        self.height, self.width = opt.height, opt.width
+        self.dim = 1024
+        self.num_head = 8
+        self.depth = 5
+        self.channel = 64
 
-    def _patch_embedding(self, x):
-        # B, C, H, W --> B, n*n, H/n, W/n
-        num_patch = 16
+        self.patch_height, self.patch_width = 16, 16
+
         if not self.opt.no_instance:
-            label_nc = self.opt.label_nc
+            self.label_nc = self.opt.label_nc + 1
         else:
-            label_nc = self.opt.label_nc + 1
+            self.label_nc = self.opt.laebl_nc
         if self.opt.contain_dontcare_label:
-            label_nc + 1
-        model = [
-            nn.Conv2d(label_nc, num_patch ** 2, num_patch, stride=num_patch)
-        ]
+            self.label_nc += 1
+
+        self.init_net()
+
+    def init_net(self):
+        # B, C, H, W --> B, n*n, H/n, W/n
+        patch_height, patch_width = self.patch_height, self.patch_width
+        num_patch = (self.height // patch_height) * (self.width // patch_width)
+        patch_dim = self.label_nc * patch_height * patch_width
+
+        self.to_patch = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_height, p2=patch_width),
+            nn.Linear(patch_dim, self.dim),
+        )
+        self.to_tensor = nn.Sequential(
+            nn.Linear(self.dim, self.channel * patch_height * patch_width),
+            Rearrange('b (h w) (p1 p2 c) -> b c (h p1) (w p2)', h=self.height // patch_height, p1=patch_height, p2=patch_width),
+        )
+
+        self.add_pos = nn.Parameter(torch.randn(1, num_patch, self.dim))
+        self.transformer = Transformer(
+            dim=self.dim,
+            depth=self.depth,
+            heads=self.num_head,
+            dim_head=64,
+            mlp_dim=128,
+        )
+
+        nef = self.channel
+        self.weight_1 = nn.Parameter(torch.randn(self.label_nc, nef * nef))
+        self.weight_2 = nn.Parameter(torch.randn(self.label_nc, nef * 3))
+        self.bias_1 = nn.Parameter(torch.zeros(self.label_nc, nef))
+        self.bias_2 = nn.Parameter(torch.zeros(self.label_nc, 3))
+
+    def affine_layout(self, layout, weight, fc_in, fc_out, mode='w'):
+        arg_layout = torch.argmax(layout, 1).long() # [b, h, w]
+        weight = F.embedding(arg_layout, weight, scale_grad_by_freq=True) # [b, h, w, c]
+        b, h, w, c = weight.size()
+        if mode == 'w':
+            assert int(c) == int(fc_in * fc_out)
+            weight = weight.contiguous().view(b, h, w, fc_in, fc_out)
+        else:
+            assert int(c) == int(fc_out)
+            weight = weight.contiguous().view(b, h, w, 1, fc_out)
+        return weight
+
+    def forward(self, input, z=None, input_dist=None):
+        if self.opt.check_flop and input.size(2) != 256:
+            input = torch.randn((1, self.label_nc, 256, 512), device=input.device)
+        x = self.to_patch(input)
+        b, n, _ = x.shape
+        x += self.add_pos
+        x = self.transformer(x)  # b, H/n * W/n (num_patch), dim
+        # print(f"error 0 {x.size()}")
+        x = self.to_tensor(x)
+        # print(f"error 1 {x.size()}")
+
+        B, C, H, W = x.size()
+        x = x.permute(0, 2, 3, 1).contiguous().view(B, H, W, 1, C)  # B, H, W, C
+
+        nef = self.channel
+        layout = input
+        weight_1 = self.affine_layout(layout, self.weight_1, nef, nef)
+        bias_1 = self.affine_layout(layout, self.bias_1, nef, nef, mode='b')
+        x = torch.matmul(x, weight_1) + bias_1
+        x = F.leaky_relu(x, 0.01, inplace=True)
+
+        weight_2 = self.affine_layout(layout, self.weight_2, nef, 3)
+        bias_2 = self.affine_layout(layout, self.bias_2, nef, 3, mode='b')
+        x = torch.matmul(x, weight_2) + bias_2
+
+        x = x.view(B, H, W, 3).permute(0, 3, 1, 2)
+        x = torch.tanh(x)
+        # print(f"error 3 {x.size()}")
+        return x
 
 
 class MLPGenerator(BaseNetwork):
@@ -273,8 +350,8 @@ class FVASISGenerator(BaseNetwork):
         pl = self.pl.unsqueeze(0).expand_as(pr).to(device)
         pcos = self.coords.expand([input.size(0), *self.coords.size()]).to(device)
 
-        x = self.encoder(layout)
-        x = x * position
+        x = torch.cat([layout, pa, pl, pr, pcos], dim=1)
+        x = self.encoder(x)
         B, C, H, W = x.size()
         x = x.permute(0, 2, 3, 1).contiguous().view(B, H, W, 1, C)  # B, H, W, C
 
