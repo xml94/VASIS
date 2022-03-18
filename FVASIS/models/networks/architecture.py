@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torchvision
 import torch.nn.utils.spectral_norm as spectral_norm
 from models.networks.normalization import SPADE, SPADELight, VariationAwareCLADE, VariationAwareSPADE
+from math import pi
 
 # ResNet block that uses SPADE.
 # It differs from the ResNet block of pix2pixHD in that
@@ -175,3 +176,94 @@ class VGG19(torch.nn.Module):
         h_relu5 = self.slice5(h_relu4)
         out = [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]
         return out
+
+
+class MLPBlock(nn.Module):
+    def __init__(self, opt, fc_in, fc_out, height, width):
+        super(MLPBlock, self).__init__()
+        self.opt = opt
+        self.fc_in = fc_in
+        self.fc_out = fc_out
+        self.height, self.width = height, width
+        label_nc = opt.label_nc
+        # fc_in = fc_in + opt.nc_position
+        self.conv = nn.Conv2d(self.opt.nc_position, 1, 1)
+        nn.init.zeros_(self.conv.weight)
+        nn.init.zeros_(self.conv.bias)
+        self.weight = nn.Parameter(torch.randn(label_nc, fc_in * fc_out))
+        self.bias = nn.Parameter(torch.zeros(label_nc, fc_out))
+        self.init_pos()
+
+    def init_pos(self):
+        H, W = self.height, self.width
+
+        # learned position
+        self.pl = nn.Parameter(torch.randn(2, H, W))
+
+        # absolute position
+        x = torch.tensor(range(H)).view(-1, 1) / H * 2 - 1
+        y = torch.tensor(range(W)).view(1, W) / W * 2 - 1
+        x = torch.cat([x] * W, dim=1).unsqueeze(0)
+        y = torch.cat([y] * H, dim=0).unsqueeze(0)
+        self.pa = torch.cat([x, y], dim=0)
+
+        #
+        h, w = H, W
+        f0 = 3
+        f = f0
+        while f > 1:
+            x = torch.arange(0, w).float()
+            y = torch.arange(0, h).float()
+            xcos = torch.cos((2 * pi * torch.remainder(x, f).float() / f).float())
+            xsin = torch.sin((2 * pi * torch.remainder(x, f).float() / f).float())
+            ycos = torch.cos((2 * pi * torch.remainder(y, f).float() / f).float())
+            ysin = torch.sin((2 * pi * torch.remainder(y, f).float() / f).float())
+            xcos = xcos.view(1, 1, w).repeat(1, h, 1)
+            xsin = xsin.view(1, 1, w).repeat(1, h, 1)
+            ycos = ycos.view(1, h, 1).repeat(1, 1, w)
+            ysin = ysin.view(1, h, 1).repeat(1, 1, w)
+            coords_cur = torch.cat([xcos, xsin, ycos, ysin], 0)
+            if f < f0:
+                coords = torch.cat([coords, coords_cur], 1)
+            else:
+                coords = coords_cur
+            f = f//2
+        self.coords = coords
+
+    def affine_layout(self, layout):
+        arg_layout = torch.argmax(layout, 1).long() # [b, h, w]
+        weight = F.embedding(arg_layout, self.weight, scale_grad_by_freq=True) # [b, h, w, c]
+        bias = F.embedding(arg_layout, self.bias, scale_grad_by_freq=True)
+        b, h, w, c = weight.size()
+        weight = weight.contiguous().view(b, h, w, self.fc_in, self.fc_out)
+        bias = bias.contiguous().view(b, h, w, 1, self.fc_out)
+        return weight, bias
+
+    def forward(self, x, layout, pr=None):
+        """
+        x: feature map <B, C, h, w>
+        layout: semantic layout, <B, N, H, W>
+        pr: relative position <B, 2, H, W>
+        """
+        if self.opt.check_flop and pr is None:
+            pr = torch.randn((x.size(0), 2, self.height, self.width), device=x.get_device())
+        B, C, h, w = x.size()
+        device = x.get_device()
+        pa = self.pa.unsqueeze(0).expand(B, 2, h, w).to(device)
+        pl = self.pl.unsqueeze(0).expand(B, 2, h, w).to(device)
+        coords = self.coords.unsqueeze(0).expand(B, 4, h, w).to(device)
+        pr = F.interpolate(pr, size=[h, w], mode='nearest')
+        # noise = torch.randn((B, 20, h, w), device=device)
+        pos = torch.cat([pa, pl, pr, coords], dim=1)
+        x = x + self.conv(pos)
+        x = x.contiguous().permute(0, 2, 3, 1).view(B, h, w, 1, C)
+        layout = F.interpolate(layout, size=[h, w], mode='nearest')
+        weight, bias = self.affine_layout(layout)
+        x = torch.matmul(x, weight) + bias
+        x = x.squeeze(3).permute(0, 3, 1, 2)
+        x = F.instance_norm(x)
+        x = F.leaky_relu(x)
+        # x = self.conv(x)
+        # x = F.instance_norm(x)
+        # x = F.leaky_relu(x)
+        return x

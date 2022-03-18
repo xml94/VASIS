@@ -1,28 +1,25 @@
 #python test.py --name [model_name] --norm_mode clade --batchSize 1 --gpu_ids 0 --which_epoch best --dataset_mode [dataset] --dataroot [Path_to_dataset] --add_dist
 
-export gpu=3
+export gpu=1
 export batchSize=1
-export epoch='best'
-export date=2203
-export result="results/cityscapes"
-export ckpt="./checkpoints/cityscapes"
-export norm_mode=spade_variation
-export name="$date"_FVASIS
+export epoch=best
+export date=1030
+export device=oem
+export name=1030_cityscapes_clade_variation_reflect_learnRelativeAll_all_oem
 
-#export name=clade_cityscapes
 python test.py --name $name \
---norm_mode "$norm_mode" --batchSize $batchSize \
+--norm_mode clade_variation --batchSize $batchSize \
 --gpu_ids $gpu --which_epoch $epoch \
---results_dir "$result" --checkpoints_dir $ckpt \
 --dataset_mode cityscapes \
---dataroot ./../datasets/cityscapes \
---height 256 --width 512 \
---add_dist --dist_type 'offline'
+--dataroot ./../datasets/cityscapes_back \
+--pad 'reflect' \
+--pos 'learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+--noise_nc 'all'
 
 
 # compute FID
 export real_path=./../datasets/cityscapes/
-export fake_path=./"$result"/$name/test_"$epoch"/images/synthesized_image
+export fake_path=./results/$name/test_"$epoch"/images/synthesized_image
 python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name cityscapes
 
 

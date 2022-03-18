@@ -6,13 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch
 import models.networks as networks
 import util.util as util
-import random
-from ptflops import get_model_complexity_info
-try:
-    from torch.cuda.amp import autocast as autocast, GradScaler
-    AMP = True
-except:
-    AMP = False
+from scipy.ndimage.morphology import distance_transform_edt as DistTransform
 
 class Pix2PixModel(torch.nn.Module):
     @staticmethod
@@ -25,103 +19,48 @@ class Pix2PixModel(torch.nn.Module):
         self.opt = opt
         self.FloatTensor = torch.cuda.FloatTensor if self.use_gpu() \
             else torch.FloatTensor
-        torch_version = torch.__version__.split('.')
-        if int(torch_version[1]) >= 2:
-            self.ByteTensor = torch.cuda.BoolTensor if self.use_gpu() \
-                else torch.BoolTensor
-        else:
-            self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() \
-                else torch.ByteTensor
+        self.ByteTensor = torch.cuda.ByteTensor if self.use_gpu() \
+            else torch.ByteTensor
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
-        if self.opt.check_flop:
-            with torch.cuda.device(0):
-                if self.opt.netG != 'FVASIS':
-                    if self.opt.dataset_mode == 'ade20k':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (151, 8, 8), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    elif self.opt.dataset_mode == 'coco':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (184, 8, 8), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    elif self.opt.dataset_mode == 'cityscapes':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (36, 8, 4), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    else:
-                        raise NotImplementedError('Checking please the dataset mode to compute flops.')
-                else:
-                    if self.opt.dataset_mode == 'ade20k':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (151, 256, 256), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    elif self.opt.dataset_mode == 'coco':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (184, 256, 256), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    elif self.opt.dataset_mode == 'cityscapes':
-                        macs, params = get_model_complexity_info(
-                            self.netG, (36, 256, 512), as_strings=True,
-                            print_per_layer_stat=False, verbose=False
-                        )
-                    else:
-                        raise NotImplementedError('Checking please the dataset mode to compute flops.')
-                print('Checking: {:<30}  {:<8}'.format('Number of parameters: ', params))
-                print('Checking: {:<30}  {:<8}'.format('Computational complexity: ', macs))
-
-        if self.opt.env == 'horovod':
-            import horovod.torch as hvd
-            hvd.init()
-            torch.cuda.set_device(hvd.local_rank())
-            if self.netG is not None:
-                hvd.broadcast_parameters(self.netG.state_dict(), root_rank=0)
-                self.netG.cuda()
-            if self.netD is not None:
-                hvd.broadcast_parameters(self.netD.state_dict(), root_rank=0)
-                self.netD.cuda()
-            if self.netE is not None:
-                hvd.broadcast_parameters(self.netE.state_dict(), root_rank=0)
-                self.netE.cuda()
-
-        self.amp = True if AMP and opt.use_amp and opt.isTrain else False
-        self.checking_flag = False
 
         # set loss functions
         if opt.isTrain:
             self.criterionGAN = networks.GANLoss(
                 opt.gan_mode, tensor=self.FloatTensor, opt=self.opt)
             self.criterionFeat = torch.nn.L1Loss()
+            if opt.MSE_loss:
+                self.criterionMSE = torch.nn.MSELoss()
+            if opt.L1_loss:
+                self.criterionL1 = torch.nn.L1Loss()
             if not opt.no_vgg_loss:
-                self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids, self.opt.env)
+                self.criterionVGG = networks.VGGLoss(self.opt.gpu_ids)
             if opt.use_vae:
                 self.KLDLoss = networks.KLDLoss()
+            if opt.use_weight_decay:
+                self.WDLoss = torch.nn.MSELoss()
 
     # Entry point for all calls involving forward pass
     # of deep networks. We used this approach since DataParallel module
     # can't parallelize custom functions, we branch to different
     # routines based on |mode|.
     def forward(self, data, mode):
-        input_semantics, real_image, input_dist = self.preprocess_input(data)
+        input_semantics, real_image = self.preprocess_input(data)
+
         if mode == 'generator':
             g_loss, generated = self.compute_generator_loss(
-                input_semantics, real_image, input_dist)
+                input_semantics, real_image)
             return g_loss, generated
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(
-                input_semantics, real_image, input_dist)
+                input_semantics, real_image)
             return d_loss
         elif mode == 'encode_only':
             z, mu, logvar = self.encode_z(real_image)
             return mu, logvar
         elif mode == 'inference':
             with torch.no_grad():
-                fake_image, _ = self.generate_fake(input_semantics, real_image, input_dist)
+                fake_image, _, _ = self.generate_fake(input_semantics, real_image)
             return fake_image
         else:
             raise ValueError("|mode| is invalid")
@@ -139,23 +78,8 @@ class Pix2PixModel(torch.nn.Module):
         else:
             G_lr, D_lr = opt.lr / 2, opt.lr * 2
 
-        if self.opt.env == 'horovod':
-            import horovod.torch as hvd
-            hvd.init()
-            torch.cuda.set_device(hvd.local_rank())
-
-            lr_scaler = hvd.size()
-        else:
-            lr_scaler = 1
-
-        optimizer_G = torch.optim.Adam(G_params, lr=G_lr * lr_scaler, betas=(beta1, beta2))
-        optimizer_D = torch.optim.Adam(D_params, lr=D_lr * lr_scaler, betas=(beta1, beta2))
-
-        if self.opt.env == 'horovod':
-            hvd.broadcast_optimizer_state(optimizer_G, root_rank=0)
-            hvd.broadcast_optimizer_state(optimizer_D, root_rank=0)
-            optimizer_G = hvd.DistributedOptimizer(optimizer_G, named_parameters=self.netG.named_parameters())
-            optimizer_D = hvd.DistributedOptimizer(optimizer_D, named_parameters=self.netD.named_parameters())
+        optimizer_G = torch.optim.Adam(G_params, lr=G_lr, betas=(beta1, beta2))
+        optimizer_D = torch.optim.Adam(D_params, lr=D_lr, betas=(beta1, beta2))
 
         return optimizer_G, optimizer_D
 
@@ -171,9 +95,11 @@ class Pix2PixModel(torch.nn.Module):
 
     def initialize_networks(self, opt):
         netG = networks.define_G(opt)
+        print(netG)
         netD = networks.define_D(opt) if opt.isTrain else None
+        #print(netD)
         netE = networks.define_E(opt) if opt.use_vae else None
-
+        #print(netE)
         if not opt.isTrain or opt.continue_train:
             netG = util.load_network(netG, 'G', opt.which_epoch, opt)
             if opt.isTrain:
@@ -189,34 +115,40 @@ class Pix2PixModel(torch.nn.Module):
 
     def preprocess_input(self, data):
         # move to GPU and change data types
-        data['label'] = data['label'].long()
+        if not(self.opt.no_one_hot):
+            data['label'] = data['label'].long()
         if self.use_gpu():
             data['label'] = data['label'].cuda()
             data['instance'] = data['instance'].cuda()
             data['image'] = data['image'].cuda()
-            data['dist'] = data['dist'].cuda()
 
         # create one-hot label map
-        label_map = data['label']
-        bs, _, h, w = label_map.size()
-        nc = self.opt.label_nc + 1 if self.opt.contain_dontcare_label \
-            else self.opt.label_nc
-        input_label = self.FloatTensor(bs, nc, h, w).zero_()
-        input_semantics = input_label.scatter_(1, label_map, 1.0)
-
+        if self.opt.no_one_hot:
+            input_semantics = data['label']
+        else:
+            label_map = data['label']
+            bs, _, h, w = label_map.size()
+            nc = self.opt.label_nc + 1 if self.opt.contain_dontcare_label \
+                else self.opt.label_nc
+            input_label = self.FloatTensor(bs, nc, h, w).zero_()
+            input_semantics = input_label.scatter_(1, label_map, 1.0)
         # concatenate instance map if it exists
-        if not self.opt.no_instance:
+        if not self.opt.no_instance_edge:
             inst_map = data['instance']
             instance_edge_map = self.get_edges(inst_map)
             input_semantics = torch.cat((input_semantics, instance_edge_map), dim=1)
+        if not self.opt.no_instance_dist:
+            inst_map = data['instance']
+            instance_dist = self.get_distransform(inst_map)
+            input_semantics = torch.cat((input_semantics, instance_dist), dim=1)
 
-        return input_semantics, data['image'], data['dist']
+        return input_semantics, data['image']
 
-    def compute_generator_loss(self, input_semantics, real_image, input_dist):
+    def compute_generator_loss(self, input_semantics, real_image):
         G_losses = {}
 
-        fake_image, KLD_loss = self.generate_fake(
-            input_semantics, real_image, input_dist, compute_kld_loss=self.opt.use_vae)
+        fake_image, lr_features, KLD_loss = self.generate_fake(
+            input_semantics, real_image, compute_kld_loss=self.opt.use_vae)
 
         if self.opt.use_vae:
             G_losses['KLD'] = KLD_loss
@@ -224,8 +156,8 @@ class Pix2PixModel(torch.nn.Module):
         pred_fake, pred_real = self.discriminate(
             input_semantics, fake_image, real_image)
 
-        G_losses['GAN'] = self.criterionGAN(pred_fake, True,
-                                            for_discriminator=False)
+        if not self.opt.no_adv_loss:
+            G_losses['GAN'] = self.criterionGAN(pred_fake, True, for_discriminator=False)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -240,18 +172,28 @@ class Pix2PixModel(torch.nn.Module):
             G_losses['GAN_Feat'] = GAN_Feat_loss
 
         if not self.opt.no_vgg_loss:
-            if self.amp:
-                with autocast():
-                    G_losses['VGG'] = self.criterionVGG(fake_image, real_image) * self.opt.lambda_vgg
-            else:
-                G_losses['VGG'] = self.criterionVGG(fake_image, real_image) * self.opt.lambda_vgg
+            G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
+                * self.opt.lambda_vgg
+
+        if self.opt.MSE_loss:
+            G_losses['MSE'] = self.criterionMSE(fake_image, real_image) \
+                * self.opt.lambda_MSE
+        if self.opt.L1_loss:
+            G_losses['L1'] = self.criterionL1(fake_image, real_image) \
+                * self.opt.lambda_L1
+        if self.opt.use_weight_decay:
+            lr_features_l2 = lr_features.norm(p=2)
+            device = lr_features_l2.device
+            zero = torch.zeros(lr_features_l2.shape).to(device)
+            G_losses['WD'] = self.WDLoss(lr_features_l2, zero) \
+                * self.opt.lambda_WD
 
         return G_losses, fake_image
 
-    def compute_discriminator_loss(self, input_semantics, real_image, input_dist):
+    def compute_discriminator_loss(self, input_semantics, real_image):
         D_losses = {}
         with torch.no_grad():
-            fake_image, _ = self.generate_fake(input_semantics, real_image, input_dist)
+            fake_image, _, _ = self.generate_fake(input_semantics, real_image)
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
 
@@ -266,15 +208,11 @@ class Pix2PixModel(torch.nn.Module):
         return D_losses
 
     def encode_z(self, real_image):
-        if self.amp:
-            with autocast():
-                mu, logvar = self.netE(real_image)
-        else:
-            mu, logvar = self.netE(real_image)
+        mu, logvar = self.netE(real_image)
         z = self.reparameterize(mu, logvar)
         return z, mu, logvar
 
-    def generate_fake(self, input_semantics, real_image, input_dist, compute_kld_loss=False):
+    def generate_fake(self, input_semantics, real_image, compute_kld_loss=False):
         z = None
         KLD_loss = None
         if self.opt.use_vae:
@@ -282,16 +220,12 @@ class Pix2PixModel(torch.nn.Module):
             if compute_kld_loss:
                 KLD_loss = self.KLDLoss(mu, logvar) * self.opt.lambda_kld
 
-        if self.amp:
-            with autocast():
-                fake_image = self.netG(input_semantics, z=z, input_dist=input_dist)
-        else:
-            fake_image = self.netG(input_semantics, z=z, input_dist=input_dist)
+        fake_image, lr_features = self.netG(input_semantics, z=z)
 
         assert (not compute_kld_loss) or self.opt.use_vae, \
             "You cannot compute KLD loss if opt.use_vae == False"
 
-        return fake_image, KLD_loss
+        return fake_image, lr_features, KLD_loss
 
     # Given fake and real image, return the prediction of discriminator
     # for each fake and real image.
@@ -306,11 +240,7 @@ class Pix2PixModel(torch.nn.Module):
         # So both fake and real images are fed to D all at once.
         fake_and_real = torch.cat([fake_concat, real_concat], dim=0)
 
-        if self.amp:
-            with autocast():
-                discriminator_out = self.netD(fake_and_real)
-        else:
-            discriminator_out = self.netD(fake_and_real)
+        discriminator_out = self.netD(fake_and_real)
 
         pred_fake, pred_real = self.divide_pred(discriminator_out)
 
@@ -333,12 +263,26 @@ class Pix2PixModel(torch.nn.Module):
         return fake, real
 
     def get_edges(self, t):
-        edge = self.ByteTensor(t.size()).zero_()
+        #edge = self.ByteTensor(t.size()).zero_()
+        edge = self.ByteTensor(t.size()).zero_().bool()
         edge[:, :, :, 1:] = edge[:, :, :, 1:] | (t[:, :, :, 1:] != t[:, :, :, :-1])
         edge[:, :, :, :-1] = edge[:, :, :, :-1] | (t[:, :, :, 1:] != t[:, :, :, :-1])
         edge[:, :, 1:, :] = edge[:, :, 1:, :] | (t[:, :, 1:, :] != t[:, :, :-1, :])
         edge[:, :, :-1, :] = edge[:, :, :-1, :] | (t[:, :, 1:, :] != t[:, :, :-1, :])
         return edge.float()
+
+    def get_distransform(self, t):
+        #edge = self.ByteTensor(t.size()).zero_().cpu()
+        edge = self.ByteTensor(t.size()).zero_().bool().cpu()
+        device = t.device
+        t = t.cpu()
+        edge[:, :, :, 1:] = edge[:, :, :, 1:] | (t[:, :, :, 1:] != t[:, :, :, :-1])
+        edge[:, :, :, :-1] = edge[:, :, :, :-1] | (t[:, :, :, 1:] != t[:, :, :, :-1])
+        edge[:, :, 1:, :] = edge[:, :, 1:, :] | (t[:, :, 1:, :] != t[:, :, :-1, :])
+        edge[:, :, :-1, :] = edge[:, :, :-1, :] | (t[:, :, 1:, :] != t[:, :, :-1, :])
+        distransform = DistTransform(edge)
+        distransform = torch.from_numpy(distransform).float().to(device)
+        return distransform.float()
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -346,4 +290,4 @@ class Pix2PixModel(torch.nn.Module):
         return eps.mul(std) + mu
 
     def use_gpu(self):
-        return len(self.opt.gpu_ids) > 0 or self.opt.env == 'horovod'
+        return len(self.opt.gpu_ids) > 0

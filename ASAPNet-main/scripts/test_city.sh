@@ -3,11 +3,11 @@
 export gpu=3
 export batchSize=1
 export epoch='best'
-export date=2203
+export date=2201
 export result="results/cityscapes"
 export ckpt="./checkpoints/cityscapes"
 export norm_mode=spade_variation
-export name="$date"_FVASIS
+export name="$date"_"$norm_mode"_kernel_1_norm_avg_all_fix_learn_relative_all
 
 #export name=clade_cityscapes
 python test.py --name $name \
@@ -16,8 +16,11 @@ python test.py --name $name \
 --results_dir "$result" --checkpoints_dir $ckpt \
 --dataset_mode cityscapes \
 --dataroot ./../datasets/cityscapes \
---height 256 --width 512 \
---add_dist --dist_type 'offline'
+--pad 'reflect' \
+--mode_noise 'norm_avg' --noise_nc 'all' \
+--pos 'fix_learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+--kernel_norm 1 \
+--check_flop 1
 
 
 # compute FID

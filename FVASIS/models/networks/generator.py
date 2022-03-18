@@ -12,7 +12,115 @@ from models.networks.architecture import ResnetBlock as ResnetBlock
 from models.networks.architecture import SPADEResnetBlock as SPADEResnetBlock
 import matplotlib.pyplot as plt
 import numpy as np
+from math import pi
 from models.networks.cal_dist import cal_connectedComponents as compute_dist
+from models.networks.architecture import MLPBlock
+
+
+class FVASISTRANSGENRATOR(BaseNetwork):
+    def __init__(self, opt):
+        super(FVASISTRANSGENRATOR, self).__init__()
+        self.opt = opt
+
+    def _patch_embedding(self, x):
+        # B, C, H, W --> B, n*n, H/n, W/n
+        num_patch = 16
+        if not self.opt.no_instance:
+            label_nc = self.opt.label_nc
+        else:
+            label_nc = self.opt.label_nc + 1
+        if self.opt.contain_dontcare_label:
+            label_nc + 1
+        model = [
+            nn.Conv2d(label_nc, num_patch ** 2, num_patch, stride=num_patch)
+        ]
+
+
+class MLPGenerator(BaseNetwork):
+    @staticmethod
+    def modify_commandline_options(parser, is_train):
+        parser.set_defaults(norm_G='spectralspadesyncbatch3x3')
+        parser.add_argument('--num_upsampling_layers',
+                            choices=('normal', 'more', 'most'), default='normal',
+                            help="If 'more', adds upsampling layer between the two middle resnet blocks. If 'most', also add one more upsampling + resnet layer at the end of the generator")
+
+        return parser
+
+    def __init__(self, opt):
+        super(MLPGenerator, self).__init__()
+        print(f"checking num_upsampling_layers: {opt.num_upsampling_layers}")
+        self.opt = opt
+        nf = opt.ngf
+
+        self.sw, self.sh = self.compute_latent_vector_size(opt)
+
+        if opt.use_vae:
+            self.fc = nn.Linear(opt.z_dim, 16 * nf * self.sw * self.sh)
+        else:
+            if opt.pad == 'zero':
+                self.fc = nn.Conv2d(self.opt.semantic_nc, 16 * nf, 3, padding=1)
+            elif opt.pad == 'reflect':
+                self.fc = nn.Sequential(
+                    nn.ReflectionPad2d(1),
+                    nn.Conv2d(self.opt.semantic_nc, 16 * nf, 3, padding=0)
+                )
+
+        self.head_0 = MLPBlock(opt, 16 * nf, 16 * nf, self.sh, self.sw)
+        self.up_0 = MLPBlock(opt, 16 * nf, 8 * nf, self.sh * 2, self.sw * 2)
+        self.middle_0 = MLPBlock(opt, 8 * nf, 4 * nf, self.sh * 4, self.sw * 4)
+        self.up_1 = MLPBlock(opt, 4 * nf, 2 * nf, self.sh * 8, self.sw * 8)
+        self.up_2 = MLPBlock(opt, 2 * nf, 1 * nf, self.sh * 16, self.sw * 16)
+        self.to_img = MLPBlock(opt, nf, 3, self.sh * 32, self.sw * 32)
+
+        self.up = nn.Upsample(scale_factor=2)
+
+    def compute_latent_vector_size(self, opt):
+        if opt.num_upsampling_layers == 'normal':
+            num_up_layers = 5
+        elif opt.num_upsampling_layers == 'more':
+            num_up_layers = 5
+        elif opt.num_upsampling_layers == 'most':
+            num_up_layers = 7
+        else:
+            raise ValueError('opt.num_upsampling_layers [%s] not recognized' %
+                             opt.num_upsampling_layers)
+
+        sw = opt.crop_size // (2**num_up_layers)
+        sh = round(sw / opt.aspect_ratio)
+
+        return sw, sh
+
+    def forward(self, input, z=None, input_dist=None):
+        layout = input
+        pr = input_dist
+        if self.opt.use_vae:
+            # we sample z from unit normal and reshape the tensor
+            if z is None:
+                z = torch.randn(input.size(0), self.opt.z_dim,
+                                dtype=torch.float32, device=input.get_device())
+            x = self.fc(z)
+            x = x.view(-1, 16 * self.opt.ngf, self.sh, self.sw)
+        else:
+            # we downsample segmap and run convolution
+            x = F.interpolate(layout, size=(self.sh, self.sw))
+            x = self.fc(x)
+
+        x = self.head_0(x, layout, pr=pr)
+        x = self.up(x)
+        x = self.up_0(x, layout, pr=pr)
+        x = self.up(x)
+        x = self.middle_0(x, layout, pr=pr)
+        # x = self.middle_1(x, layout, pr=pr)
+        x = self.up(x)
+        x = self.up_1(x, layout, pr=pr)
+        x = self.up(x)
+        x = self.up_2(x, layout, pr=pr)
+        # x = self.up(x)
+        # x = self.up_3(x, layout, pr=pr)
+        x = self.up(x)
+        x = self.to_img(x, layout, pr=pr)
+        x = torch.tanh(x)
+        return x
 
 
 class FVASISGenerator(BaseNetwork):
@@ -22,40 +130,79 @@ class FVASISGenerator(BaseNetwork):
 
         self.nef = 64
         self.encoder = self.init_encoder()
-        self.encoder_pos = self.init_encoder_pos()
         self.init_pos()
         self.init_weight()
+
+        self.to_img = nn.Conv2d(self.nef, 3, 3, 1, 1)
 
     def init_encoder(self):
         nef = self.nef
         if not self.opt.no_instance:
-            label_nc = self.opt.label_nc + 1
+            label_nc = self.opt.label_nc + 1 + 10
         else:
-            label_nc = self.opt.label_nc + 1
-        model = [
-            nn.ReplicationPad2d(4),
-            nn.Conv2d(label_nc, nef, kernel_size=9, stride=1),
-            nn.InstanceNorm2d(nef),
-            nn.ReLU(nef),
-            nn.ReplicationPad2d(4),
-            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
-            nn.InstanceNorm2d(nef),
-            nn.ReLU(nef),
-            nn.ReplicationPad2d(4),
-            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
-            nn.ReLU(nef),
-            nn.ReplicationPad2d(4),
-            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
-            nn.ReLU(nef),
-            nn.ReplicationPad2d(4),
-            nn.Conv2d(nef, nef, kernel_size=9, stride=1),
-        ]
-        return nn.Sequential(*model)
+            label_nc = self.opt.label_nc + 10
+        if self.opt.contain_dontcare_label:
+            label_nc += 1
 
-    def init_encoder_pos(self):
-        in_c = 6
+        kernel = 3
+        pad = int((kernel - 1) / 2)
         model = [
-            nn.Conv2d(in_c, 1, kernel_size=1)
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(label_nc, nef * 1, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef),
+            nn.ReLU(nef),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 1, nef * 2, kernel_size=kernel, stride=2),
+            nn.InstanceNorm2d(nef * 2),
+            nn.ReLU(nef * 2),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 2, nef * 4, kernel_size=kernel, stride=2),
+            nn.InstanceNorm2d(nef * 4),
+            nn.ReLU(nef * 4),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 4, nef * 8, kernel_size=kernel, stride=2),
+            nn.InstanceNorm2d(nef * 8),
+            nn.ReLU(nef * 8),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 8, nef * 16, kernel_size=kernel, stride=2),
+            nn.InstanceNorm2d(nef * 16),
+            nn.ReLU(nef * 16),
+
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 16, nef * 16, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 16),
+            nn.ReLU(nef * 16),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 16, nef * 16, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 16),
+            nn.ReLU(nef * 16),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 16, nef * 16, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 16),
+            nn.ReLU(nef * 16),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 16, nef * 16, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 16),
+            nn.ReLU(nef * 16),
+
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 16, nef * 8, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 8),
+            nn.ReLU(nef * 8),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 8, nef * 4, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 4),
+            nn.ReLU(nef * 4),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 4, nef * 2, kernel_size=kernel, stride=1),
+            nn.InstanceNorm2d(nef * 2),
+            nn.ReLU(nef * 2),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReplicationPad2d(pad),
+            nn.Conv2d(nef * 2, nef * 1, kernel_size=kernel, stride=1),
         ]
         return nn.Sequential(*model)
 
@@ -68,26 +215,44 @@ class FVASISGenerator(BaseNetwork):
         self.pa = torch.cat([x, y], dim=0)
         self.pl = nn.Parameter(torch.randn(2, H, W))
 
+        h, w = self.opt.height, self.opt.width
+        f0 = 3
+        f = f0
+        while f > 1:
+            x = torch.arange(0, w).float()
+            y = torch.arange(0, h).float()
+            xcos = torch.cos((2 * pi * torch.remainder(x, f).float() / f).float())
+            xsin = torch.sin((2 * pi * torch.remainder(x, f).float() / f).float())
+            ycos = torch.cos((2 * pi * torch.remainder(y, f).float() / f).float())
+            ysin = torch.sin((2 * pi * torch.remainder(y, f).float() / f).float())
+            xcos = xcos.view(1, 1, w).repeat(1, h, 1)
+            xsin = xsin.view(1, 1, w).repeat(1, h, 1)
+            ycos = ycos.view(1, h, 1).repeat(1, 1, w)
+            ysin = ysin.view(1, h, 1).repeat(1, 1, w)
+            coords_cur = torch.cat([xcos, xsin, ycos, ysin], 0)
+            if f < f0:
+                coords = torch.cat([coords, coords_cur], 1)
+            else:
+                coords = coords_cur
+            f = f//2
+        self.coords = coords
+
     def init_weight(self):
         nef = self.nef
         if not self.opt.no_instance:
             label_nc = self.opt.label_nc + 1
         else:
-            label_nc = self.opt.label_nc + 1
+            label_nc = self.opt.label_nc
+        if self.opt.contain_dontcare_label:
+            label_nc += 1
         self.weight_1 = nn.Parameter(torch.randn(label_nc, nef * nef))
-        self.weight_2 = nn.Parameter(torch.randn(label_nc, nef * nef))
-        self.weight_3 = nn.Parameter(torch.randn(label_nc, nef * nef))
-        # self.weight_4 = nn.Parameter(torch.randn(label_nc, nef * nef))
         self.weight_5 = nn.Parameter(torch.randn(label_nc, nef * 3))
-        self.b_1 = nn.Parameter(torch.randn(label_nc, nef))
-        self.b_2 = nn.Parameter(torch.randn(label_nc, nef))
-        self.b_3 = nn.Parameter(torch.randn(label_nc, nef))
-        # self.b_4 = nn.Parameter(torch.randn(label_nc, nef))
-        self.b_5 = nn.Parameter(torch.randn(label_nc, 3))
+        self.b_1 = nn.Parameter(torch.zeros(label_nc, nef))
+        self.b_5 = nn.Parameter(torch.zeros(label_nc, 3))
 
     def affine_layout(self, layout, weight, fc_in, fc_out, mode='w'):
         arg_layout = torch.argmax(layout, 1).long() # [b, h, w]
-        weight = F.embedding(arg_layout, weight) # [b, h, w, c]
+        weight = F.embedding(arg_layout, weight, scale_grad_by_freq=True) # [b, h, w, c]
         b, h, w, c = weight.size()
         if mode == 'w':
             assert int(c) == int(fc_in * fc_out)
@@ -98,14 +263,15 @@ class FVASISGenerator(BaseNetwork):
         return weight
 
     def forward(self, input, z=None, input_dist=None):
+        if self.opt.check_flop and input_dist is None:
+            input_dist = torch.randn(1, 2, 256, 512).to(input.get_device())
         layout = input
         pr = input_dist
         device = layout.get_device()
 
         pa = self.pa.unsqueeze(0).expand_as(pr).to(device)
         pl = self.pl.unsqueeze(0).expand_as(pr).to(device)
-        pos = torch.cat([pa, pl, pr], dim=1)
-        position = self.encoder_pos(pos)
+        pcos = self.coords.expand([input.size(0), *self.coords.size()]).to(device)
 
         x = self.encoder(layout)
         x = x * position
@@ -113,32 +279,17 @@ class FVASISGenerator(BaseNetwork):
         x = x.permute(0, 2, 3, 1).contiguous().view(B, H, W, 1, C)  # B, H, W, C
 
         nef = self.nef
-        weight_1 = self.affine_layout(layout, self.weight_1, nef, nef)
+        weight_1 = self.affine_layout(layout, self.weight_1, nef * 1, nef)
         b_1 = self.affine_layout(layout, self.b_1, nef, nef, mode='b')
         x = torch.matmul(x, weight_1) + b_1
-        x = F.relu(x)
-
-        weight_2 = self.affine_layout(layout, self.weight_2, nef, nef)
-        b_2 = self.affine_layout(layout, self.b_2, nef, nef, mode='b')
-        x = torch.matmul(x, weight_2) + b_2
-        x = F.relu(x)
-
-        weight_3 = self.affine_layout(layout, self.weight_3, nef, nef)
-        b_3 = self.affine_layout(layout, self.b_3, nef, nef, mode='b')
-        x = torch.matmul(x, weight_3) + b_3
-        x = F.relu(x)
-
-        # weight_4 = self.affine_layout(layout, self.weight_4, nef, nef)
-        # b_4 = self.affine_layout(layout, self.b_4, nef, nef, mode='b')
-        # x = torch.matmul(x, weight_4) + b_4
-        # x = F.relu(x)
+        x = F.leaky_relu(x, 0.01, inplace=True)
 
         weight_5 = self.affine_layout(layout, self.weight_5, nef, 3)
         b_5 = self.affine_layout(layout, self.b_5, nef, 3, mode='b')
         x = torch.matmul(x, weight_5) + b_5
 
-        x = torch.tanh(x)
         x = x.view(B, H, W, 3).permute(0, 3, 1, 2)
+        x = torch.tanh(x)
         return x
 
 
@@ -308,7 +459,7 @@ class SPADEGenerator(BaseNetwork):
             save_std.append(torch.std(img[0, 0]).detach().cpu().numpy())
 
         if self.opt.num_upsampling_layers == 'more' or \
-           self.opt.num_upsampling_layers == 'most':
+                self.opt.num_upsampling_layers == 'most':
             x = self.up(x)
 
         x = self.G_middle_1(x, seg, input_dist)
@@ -443,3 +594,5 @@ class Pix2PixHDGenerator(BaseNetwork):
 
     def forward(self, input, z=None):
         return self.model(input)
+
+
