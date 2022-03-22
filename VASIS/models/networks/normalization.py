@@ -790,7 +790,7 @@ class ClassAffine(nn.Module):
         return class_weight, class_bias
 
     def forward(self, input, mask, input_dist=None):
-        if self.check_flop and input_dist is None:
+        if self.check_flop and self.add_dist and input_dist is None:
             B, _, H, W = input.size()
             input_dist = torch.ones(B, 2, H, W).to(input.device)
         # class_weight, class_bias = self.affine_gather(input, mask)

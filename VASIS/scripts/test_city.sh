@@ -1,13 +1,13 @@
 #python test.py --name [model_name] --norm_mode clade --batchSize 1 --gpu_ids 0 --which_epoch best --dataset_mode [dataset] --dataroot [Path_to_dataset] --add_dist
 
 export gpu=3
-export batchSize=1
+export batchSize=10
 export epoch='best'
 export date=2201
 export result="results/cityscapes"
 export ckpt="./checkpoints/cityscapes"
 export norm_mode=spade_variation
-export name="$date"_"$norm_mode"_kernel_1_norm_avg_all_fix_learn_relative_all
+export name="$date"_"$norm_mode"_kernel_1_norm_cat_all_learn_all
 
 #export name=clade_cityscapes
 python test.py --name $name \
@@ -17,8 +17,8 @@ python test.py --name $name \
 --dataset_mode cityscapes \
 --dataroot ./../datasets/cityscapes \
 --pad 'reflect' \
---mode_noise 'norm_avg' --noise_nc 'all' \
---pos 'fix_learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+--mode_noise 'norm_cat' --noise_nc 'all' \
+--pos 'learn' --pos_nc 'all' --add_dist --dist_type 'offline' \
 --kernel_norm 1 \
 --check_flop 1
 

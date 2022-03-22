@@ -16,8 +16,19 @@ from math import pi
 from models.networks.cal_dist import cal_connectedComponents as compute_dist
 from models.networks.architecture import MLPBlock
 from einops.layers.torch import Rearrange
-from models.networks.architecture import Transformer
+from models.networks.transformer import Transformer
+import models.networks.config as configs
 
+
+CONFIGS = {
+    'ViT-B_16': configs.get_b16_config(),
+    'ViT-B_32': configs.get_b32_config(),
+    'ViT-L_16': configs.get_l16_config(),
+    'ViT-L_32': configs.get_l32_config(),
+    'ViT-H_14': configs.get_h14_config(),
+    'R50-ViT-B_16': configs.get_r50_b16_config(),
+    'testing': configs.get_testing(),
+}
 
 class FVASISTRANSGenerator(BaseNetwork):
     def __init__(self, opt):
@@ -25,11 +36,9 @@ class FVASISTRANSGenerator(BaseNetwork):
         self.opt = opt
         self.height, self.width = opt.height, opt.width
         self.dim = 768
-        self.num_head = 6
-        self.depth = 5
         self.channel = 64
 
-        self.patch_height, self.patch_width = 8, 8
+        self.patch_height, self.patch_width = 16, 16
 
         if not self.opt.no_instance:
             self.label_nc = self.opt.label_nc + 1
@@ -41,44 +50,28 @@ class FVASISTRANSGenerator(BaseNetwork):
         self.init_net()
 
     def init_net(self):
-        # B, C, H, W --> B, n*n, H/n, W/n
         patch_height, patch_width = self.patch_height, self.patch_width
-        num_patch = (self.height // patch_height) * (self.width // patch_width)
-        patch_dim = self.label_nc * patch_height * patch_width
-
-        self.to_patch = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_height, p2=patch_width),
-            nn.Linear(patch_dim, self.dim),
-        )
-        # self.to_patch = nn.Sequential(
-        #     nn.Conv2d(
-        #         self.label_nc, self.dim,
-        #         kernel_size=(patch_height, patch_width),
-        #         stride=(patch_height, patch_width)
-        #     ),
-        #     Rearrange('b c h w -> b (h w) c'),
-        # )
-        self.to_tensor = nn.Sequential(
-            nn.Linear(self.dim, self.dim * 2),
-            nn.ReLU(),
-            nn.Linear(self.dim * 2, self.channel * patch_height * patch_width * 2),
-            Rearrange('b (h w) (p1 p2 c) -> b c (h p1) (w p2)', h=self.height//patch_height, p1=patch_height, p2=patch_width)
-        )
-
-        self.add_pos = nn.Parameter(torch.randn(1, num_patch, self.dim))
+        self.pos = nn.Parameter(torch.randn(1, 2, self.height, self.width))
         self.transformer = Transformer(
-            dim=self.dim,
-            depth=self.depth,
-            heads=self.num_head,
-            dim_head=256,
-            mlp_dim=256,
+            CONFIGS['ViT-B_16'],
+            (self.height, self.width),
+            vis=False
         )
-
+        self.to_tensor = nn.Sequential(
+            nn.Linear(self.dim, self.dim),
+            nn.ReLU(),
+            nn.Linear(self.dim, 2 * self.channel * patch_height * patch_width),
+            Rearrange('b (h w) (p1 p2 c) -> b c (h p1) (w p2)',
+                      h=self.height//patch_height, p1=patch_height, p2=patch_width)
+        )
         nef = self.channel
-        self.weight_1 = nn.Parameter(torch.randn(self.label_nc, nef * 2 * 3))
+        self.weight_1 = nn.Parameter(torch.randn(self.label_nc, nef * 3))
         self.bias_1 = nn.Parameter(torch.zeros(self.label_nc, 3))
         # self.weight_2 = nn.Parameter(torch.randn(self.label_nc, nef * 3))
         # self.bias_2 = nn.Parameter(torch.zeros(self.label_nc, 3))
+
+        self.weight_p = nn.Parameter(torch.randn(1, self.height, self.width, self.channel, 3))
+        self.bias_p = nn.Parameter(torch.zeros(1, self.height, self.width, 1, 3))
 
     def affine_layout(self, layout, weight, fc_in, fc_out, mode='w'):
         arg_layout = torch.argmax(layout, 1).long() # [b, h, w]
@@ -95,27 +88,22 @@ class FVASISTRANSGenerator(BaseNetwork):
     def forward(self, input, z=None, input_dist=None):
         if self.opt.check_flop and input.size(2) != 256:
             input = torch.randn((1, self.label_nc, 256, 512), device=input.device)
-        x = self.to_patch(input)
-        b, n, _ = x.shape
-        x += self.add_pos
-        x = self.transformer(x)  # b, H/n * W/n (num_patch), dim
-        # print(f"error 0 {x.size()}")
+        pos = self.pos.expand(input.size(0), *self.pos.size()[1:]).to(input.device)
+        x = torch.cat([input, pos], dim=1)
+        x, attn_weights = self.transformer(x)
         x = self.to_tensor(x)
-        # print(f"error 1 {x.size()}")
-
         B, C, H, W = x.size()
         x = x.permute(0, 2, 3, 1).contiguous().view(B, H, W, 1, C)  # B, H, W, C
 
         nef = self.channel
         layout = input
-        weight_1 = self.affine_layout(layout, self.weight_1, nef * 2, 3)
+        weight_1 = self.affine_layout(layout, self.weight_1, nef, 3)
         bias_1 = self.affine_layout(layout, self.bias_1, nef, 3, mode='b')
+        weight_p = self.weight_p.expand(input.size(0), *self.weight_p.size()[1:]).to(input.device)
+        bias_p = self.bias_p.expand(input.size(0), *self.bias_p.size()[1:]).to(input.device)
+        weight_1 = torch.cat([weight_1, weight_p], dim=3)
+        bias_1 = (bias_1 + bias_p) / 2
         x = torch.matmul(x, weight_1) + bias_1
-        # x = F.leaky_relu(x, 0.01, inplace=True)
-        #
-        # weight_2 = self.affine_layout(layout, self.weight_2, nef, 3)
-        # bias_2 = self.affine_layout(layout, self.bias_2, nef, 3, mode='b')
-        # x = torch.matmul(x, weight_2) + bias_2
 
         x = x.view(B, H, W, 3).permute(0, 3, 1, 2)
         x = torch.tanh(x)

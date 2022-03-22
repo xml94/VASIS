@@ -25,8 +25,13 @@ export ckpt="./checkpoints/cityscapes"
 
 
 python train.py --name ASAPNet \
-  --dataset_mode cityscapes \
   --dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
   --gpu_ids $gpu \
   --batchSize $batch \
-  --nThreads 8
+  --nThreads 8 --continue_train
+
+#python train.py --name ASAPNet_VASIS \
+#  --dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
+#  --gpu_ids $gpu \
+#  --batchSize $batch \
+#  --nThreads 8
