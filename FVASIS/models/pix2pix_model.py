@@ -75,20 +75,6 @@ class Pix2PixModel(torch.nn.Module):
                 print('Checking: {:<30}  {:<8}'.format('Number of parameters: ', params))
                 print('Checking: {:<30}  {:<8}'.format('Computational complexity: ', macs))
 
-        if self.opt.env == 'horovod':
-            import horovod.torch as hvd
-            hvd.init()
-            torch.cuda.set_device(hvd.local_rank())
-            if self.netG is not None:
-                hvd.broadcast_parameters(self.netG.state_dict(), root_rank=0)
-                self.netG.cuda()
-            if self.netD is not None:
-                hvd.broadcast_parameters(self.netD.state_dict(), root_rank=0)
-                self.netD.cuda()
-            if self.netE is not None:
-                hvd.broadcast_parameters(self.netE.state_dict(), root_rank=0)
-                self.netE.cuda()
-
         self.amp = True if AMP and opt.use_amp and opt.isTrain else False
         self.checking_flag = False
 
@@ -106,11 +92,11 @@ class Pix2PixModel(torch.nn.Module):
     # of deep networks. We used this approach since DataParallel module
     # can't parallelize custom functions, we branch to different
     # routines based on |mode|.
-    def forward(self, data, mode):
+    def forward(self, data, mode, epoch=None):
         input_semantics, real_image, input_dist = self.preprocess_input(data)
         if mode == 'generator':
             g_loss, generated = self.compute_generator_loss(
-                input_semantics, real_image, input_dist)
+                input_semantics, real_image, input_dist, epoch=epoch)
             return g_loss, generated
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(
@@ -212,7 +198,7 @@ class Pix2PixModel(torch.nn.Module):
 
         return input_semantics, data['image'], data['dist']
 
-    def compute_generator_loss(self, input_semantics, real_image, input_dist):
+    def compute_generator_loss(self, input_semantics, real_image, input_dist, epoch=None):
         G_losses = {}
 
         fake_image, KLD_loss = self.generate_fake(
@@ -226,6 +212,15 @@ class Pix2PixModel(torch.nn.Module):
 
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                             for_discriminator=False)
+
+        if epoch is not None:
+            G_losses['L1'] = torch.nn.functional.l1_loss(
+                fake_image,
+                real_image
+            ) * torch.maximum(
+                torch.zeros(1, device=real_image.device),
+                torch.tensor(50.0 - epoch, device=real_image.device)
+            ) / 50.0
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)

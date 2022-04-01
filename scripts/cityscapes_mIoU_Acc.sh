@@ -13,13 +13,13 @@ EOF
 
 
 export model="VASIS"
-export epoch="latest"
-export gpu=2
+export epoch="best"
+export gpu=1
 export batch_size=5
 export date=2201
 export device=oem
 export norm_mode=spade_variation
-export name="$date"_"$norm_mode"_kernel_1_norm_cat_all_learn_all
+export name="$date"_"$norm_mode"_kernel_1_norm_cat_all_no
 #export name=ASAPNet_VASIS
 
 sh ./evaluation/drn-master/eval_city.sh $name $model $epoch $gpu $batch_size

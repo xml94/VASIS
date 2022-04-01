@@ -24,7 +24,7 @@ export ckpt="./checkpoints/cityscapes"
 #--check_flop 1 \
 #--netG FVASIS --continue_train
 
-export batch=48
+export batch=64
 python train.py --name "$date"_transformer \
 --dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
 --gpu_ids $gpu \

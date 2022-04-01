@@ -250,7 +250,7 @@ class Encoder(nn.Module):
 class Transformer(nn.Module):
     def __init__(self, config, img_size, vis):
         super(Transformer, self).__init__()
-        self.embeddings = Embeddings(config, img_size=img_size, in_channels=38)
+        self.embeddings = Embeddings(config, img_size=img_size, in_channels=68)
         self.encoder = Encoder(config, vis)
 
     def forward(self, input_ids):
