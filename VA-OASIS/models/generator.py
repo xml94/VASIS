@@ -16,11 +16,18 @@ class OASIS_Generator(nn.Module):
         self.up = nn.Upsample(scale_factor=2)
         self.body = nn.ModuleList([])
         for i in range(len(self.channels)-1):
-            self.body.append(ResnetBlock_with_SPADE(self.channels[i], self.channels[i+1], opt))
+            height, width = int(self.init_W * (2 ** i)), int(self.init_H * (2 ** i))
+            self.body.append(ResnetBlock_with_SPADE(self.channels[i], self.channels[i+1], opt, height, width))
         if not self.opt.no_3dnoise:
-            self.fc = nn.Conv2d(self.opt.semantic_nc + self.opt.z_dim, 16 * ch, 3, padding=1)
+            self.fc = nn.Sequential(
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(self.opt.semantic_nc + self.opt.z_dim, 16 * ch, 3)
+            )
         else:
-            self.fc = nn.Conv2d(self.opt.semantic_nc, 16 * ch, 3, padding=1)
+            self.fc = nn.Sequential(
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(self.opt.semantic_nc, 16 * ch, 3)
+            )
 
     def compute_latent_vector_size(self, opt):
         w = opt.crop_size // (2**(opt.num_res_blocks-1))
@@ -44,12 +51,12 @@ class OASIS_Generator(nn.Module):
             if i < self.opt.num_res_blocks-1:
                 x = self.up(x)
         x = self.conv_img(F.leaky_relu(x, 2e-1))
-        x = F.tanh(x)
+        x = torch.tanh(x)
         return x
 
 
 class ResnetBlock_with_SPADE(nn.Module):
-    def __init__(self, fin, fout, opt):
+    def __init__(self, fin, fout, opt, height, width):
         super().__init__()
         self.opt = opt
         self.learned_shortcut = (fin != fout)
@@ -67,10 +74,10 @@ class ResnetBlock_with_SPADE(nn.Module):
         if not opt.no_3dnoise:
             spade_conditional_input_dims += opt.z_dim
 
-        self.norm_0 = norms.SPADE(opt, fin, spade_conditional_input_dims)
-        self.norm_1 = norms.SPADE(opt, fmiddle, spade_conditional_input_dims)
+        self.norm_0 = norms.SPADE(opt, fin, spade_conditional_input_dims, height, width)
+        self.norm_1 = norms.SPADE(opt, fmiddle, spade_conditional_input_dims, height, width)
         if self.learned_shortcut:
-            self.norm_s = norms.SPADE(opt, fin, spade_conditional_input_dims)
+            self.norm_s = norms.SPADE(opt, fin, spade_conditional_input_dims, height, width)
         self.activ = nn.LeakyReLU(0.2, inplace=True)
 
     def forward(self, x, seg):
