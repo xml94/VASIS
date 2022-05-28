@@ -4,13 +4,15 @@ export gpu=1
 export batchSize=1
 export epoch=best
 export device=oem
-export date=2201
+export date=2204
 export result="results/coco"
 export ckpt="checkpoints/coco"
 
 
-#export norm_mode=spade_variation
-#export name="$date"_"$norm_mode"_norm_cat_all_learn_one
+export norm_mode=spade_variation
+#export name="$date"_"$norm_mode"_norm_cat_all_learn_all
+
+export name="2201_spade_variation_norm_cat_all_learn_one"
 #python test.py --name $name \
 #--norm_mode spade_variation --batchSize $batchSize \
 #--gpu_ids $gpu --which_epoch $epoch \
@@ -18,7 +20,7 @@ export ckpt="checkpoints/coco"
 #--results_dir "$result" --checkpoints_dir $ckpt \
 #--pad 'reflect' \
 #--mode_noise 'norm_cat' --noise_nc 'all' \
-#--pos 'learn' --pos_nc 'one' --add_dist --dist_type 'offline' \
+#--pos 'learn' --pos_nc 'all' \
 #--check_flop 1
 
 
@@ -35,48 +37,8 @@ export ckpt="checkpoints/coco"
 #--check_flop 1
 
 
-#export norm_mode=spade
-#export name=spade_coco_pretrained
-#python test.py --name $name \
-#--norm_mode spade_variation --batchSize $batchSize \
-#--gpu_ids $gpu --which_epoch $epoch \
-#--dataset_mode coco --dataroot "./../datasets/cocostuff" \
-#--results_dir "$result" --checkpoints_dir $ckpt \
-#--pad 'zero' \
-#--mode_noise 'norm_cat' --noise_nc 'zero' \
-#--pos 'no' --pos_nc 'one' --add_dist --dist_type 'offline' \
-#--check_flop 1
-
-#export norm_mode=clade
-#export name=coco
-#python test.py --name $name \
-#--norm_mode clade --batchSize $batchSize \
-#--gpu_ids 2 --which_epoch $epoch \
-#--dataset_mode coco --dataroot "./../datasets/cocostuff" \
-#--results_dir "$result" --checkpoints_dir $ckpt \
-#--pad 'zero' \
-#--mode_noise 'norm_cat' --noise_nc 'zero' \
-#--pos 'no' --pos_nc 'one' --dist_type 'offline' \
-#--check_flop 1
-
-export norm_mode=clade
-export name=coco_dist
-python test.py --name $name \
---norm_mode clade --batchSize $batchSize \
---gpu_ids 3 --which_epoch $epoch \
---dataset_mode coco --dataroot "./../datasets/cocostuff" \
---results_dir "$result" --checkpoints_dir $ckpt \
---pad 'zero' \
---mode_noise 'norm_cat' --noise_nc 'zero' \
---pos 'relative' --pos_nc 'one' --add_dist --dist_type 'offline' \
---check_flop 1
-
 # compute FID
-export real_path=./../datasets/cityscapes/
+export real_path="/home/oem/Mingle/VASIS/datasets/cocostuff/val_img_256"
 export fake_path=./$result/$name/test_"$epoch"/images/synthesized_image
-python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name coco
-
-
-#export real_path=./../datasets/cityscapes/
-#export fake_path=/home/oem/Mingle/SemanticImageSynthesis/datasets/cityscapes/img/
-#python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name cityscapes
+#python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name coco
+python fid_score.py $real_path $fake_path --batch-size 10 --gpu $gpu

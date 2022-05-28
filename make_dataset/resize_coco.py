@@ -21,6 +21,7 @@ for img in img_names:
         abs_orig_img = os.path.join(orig_root, img)
         abs_tgt_img = os.path.join(tgt_root, img)
 
-        img = Image.open(abs_orig_img)
-        img = img.resize((256, 256), resample=Image.NEAREST)
+        img = Image.open(abs_orig_img).convert('RGB')
+        # img = img.resize((256, 256), resample=Image.NEAREST)
+        img = img.resize((256, 256), resample=Image.BICUBIC)
         img.save(abs_tgt_img)

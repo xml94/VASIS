@@ -16,9 +16,9 @@ export model="VASIS"
 export epoch="best"
 export gpu=1
 export batch_size=1
-export date=2201
+export date=2204
 export device=oem
 export norm_mode=spade_variation
-export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_one
+export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_all
 
 sh ./evaluation/deeplab_pytorch/eval_coco.sh $model $expr_name $epoch $gpu

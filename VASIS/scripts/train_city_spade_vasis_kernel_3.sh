@@ -162,18 +162,6 @@ python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_f
 --kernel_norm $kernel_norm
 
 
-python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_learn_relative_one \
---dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
---norm_mode "$norm_mode" --gpu_ids $gpu \
---batchSize $batch --niter $niter --niter_decay $niter_decay \
---train_eval --eval_epoch_freq $freq \
---results_dir "$result" --checkpoints_dir $ckpt \
---pad 'reflect' \
---mode_noise 'norm_cat' --noise_nc 'all' \
---pos 'learn_relative' --pos_nc 'one' --add_dist --dist_type 'offline' \
---kernel_norm $kernel_norm
-
-
 python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_no \
 --dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
 --norm_mode "$norm_mode" --gpu_ids $gpu \
@@ -184,3 +172,41 @@ python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_n
 --mode_noise 'norm_cat' --noise_nc 'all' \
 --pos 'no' --pos_nc 'one' --add_dist --dist_type 'offline' \
 --kernel_norm $kernel_norm
+
+
+
+
+#python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_fix_learn_relative_all \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
+#--norm_mode "$norm_mode" --gpu_ids $gpu \
+#--batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq \
+#--results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--mode_noise 'norm_cat' --noise_nc 'all' \
+#--pos 'fix_learn_relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--kernel_norm $kernel_norm
+#
+#
+#python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_fix_all \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
+#--norm_mode "$norm_mode" --gpu_ids $gpu \
+#--batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq \
+#--results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--mode_noise 'norm_cat' --noise_nc 'all' \
+#--pos 'fix' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--kernel_norm $kernel_norm
+#
+#
+#python train.py --name "$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_relative_all \
+#--dataset_mode cityscapes --dataroot "./../datasets/cityscapes" \
+#--norm_mode "$norm_mode" --gpu_ids $gpu \
+#--batchSize $batch --niter $niter --niter_decay $niter_decay \
+#--train_eval --eval_epoch_freq $freq \
+#--results_dir "$result" --checkpoints_dir $ckpt \
+#--pad 'reflect' \
+#--mode_noise 'norm_cat' --noise_nc 'all' \
+#--pos 'relative' --pos_nc 'all' --add_dist --dist_type 'offline' \
+#--kernel_norm $kernel_norm
