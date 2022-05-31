@@ -3,13 +3,15 @@ import models.models as models
 import dataloaders.dataloaders as dataloaders
 import utils.utils as utils
 import config
-
+from utils.fid_scores import fid_pytorch
 
 #--- read options ---#
 opt = config.read_arguments(train=False)
 
 #--- create dataloader ---#
 _, dataloader_val = dataloaders.get_dataloaders(opt)
+
+fid_computer = fid_pytorch(opt, dataloader_val)
 
 #--- create utils ---#
 image_saver = utils.results_saver(opt)
@@ -24,3 +26,5 @@ for i, data_i in enumerate(dataloader_val):
     _, label = models.preprocess_input(opt, data_i)
     generated = model(None, label, "generate", None)
     image_saver(label, generated, data_i["name"])
+
+is_best = fid_computer.update(model, 0)

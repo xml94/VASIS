@@ -100,7 +100,7 @@ class OASIS_model(nn.Module):
                         or isinstance(module, nn.Linear)
                         or isinstance(module, nn.Embedding)):
                     param_count += sum([p.data.nelement() for p in module.parameters()])
-            print('Created', network.__class__.__name__, "with %d parameters" % param_count)
+            print('Created', network.__class__.__name__, "with %.2f m parameters" % (param_count / 1000000))
 
     def init_networks(self):
         def init_weights(m, gain=0.02):

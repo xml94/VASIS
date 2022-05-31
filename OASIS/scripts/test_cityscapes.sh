@@ -1,10 +1,16 @@
-#python test.py --name oasis_cityscapes_pretrained --dataset_mode cityscapes --gpu_ids 0,1,2,3 \
-#--dataroot ./../datasets/cityscapes --batch_size 20
+export name=oasis_cityscapes_pretrained
+python test.py --name ${name} --dataset_mode cityscapes --gpu_ids 0,1,2,3 \
+--dataroot ./../datasets/cityscapes --batch_size 20
+
+
+# make the testing results as our format
+export tgt_dir="./results/cityscapes/${name}/test_best/images/synthesized_image"
+mkdir -p ${tgt_dir}
+cp "./results/${name}/best/image/"* ${tgt_dir}
 
 
 # compute FID
-export name="oasis_cityscapes_pretrained"
 export gpu=0
 export real_path="./../datasets/cityscapes/leftImg8bit_256/val/"
-export fake_path="./results/${name}/best/image"
+export fake_path=${tgt_dir}
 python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu

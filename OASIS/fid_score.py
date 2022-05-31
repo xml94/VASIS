@@ -128,7 +128,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
             batch = batch.cuda()
 
         if args is not None and args.resize_size != -1:
-            batch = F.interpolate(batch, size=(args.resize_size, args.resize_size), mode='bilinear')
+            batch = F.interpolate(batch, size=(args.resize_size, args.resize_size), mode='bicubic')
         pred = model(batch)[0]
 
         # If model output is not scalar, apply global spatial average pooling.

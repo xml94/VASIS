@@ -36,7 +36,7 @@ for epoch in range(start_epoch, opt.num_epochs):
         if not already_started and i < start_iter:
             continue
         already_started = True
-        cur_iter = epoch*len(dataloader) + i
+        cur_iter = epoch * len(dataloader) + i
         image, label = models.preprocess_input(opt, data_i)
 
         #--- generator update ---#
@@ -52,12 +52,12 @@ for epoch in range(start_epoch, opt.num_epochs):
         loss_D, losses_D_list = loss_D.mean(), [loss.mean() if loss is not None else None for loss in losses_D_list]
         loss_D.backward()
         optimizerD.step()
-        
-        #--- stats update ---#
+
+        # --- stats update ---#
         if not opt.no_EMA:
             utils.update_EMA(model, cur_iter, dataloader, opt)
         if cur_iter % opt.freq_print == 0:
-            # im_saver.visualize_batch(model, image, label, cur_iter)
+            im_saver.visualize_batch(model, image, label, cur_iter)
             timer(epoch, cur_iter)
         if cur_iter % opt.freq_save_ckpt == 0:
             utils.save_networks(opt, cur_iter, model)
@@ -67,15 +67,15 @@ for epoch in range(start_epoch, opt.num_epochs):
             is_best = fid_computer.update(model, cur_iter)
             if is_best:
                 utils.save_networks(opt, cur_iter, model, best=True)
-        visualizer_losses(cur_iter, losses_G_list+losses_D_list)
+        visualizer_losses(cur_iter, losses_G_list + losses_D_list)
 
 #--- after training ---#
-utils.update_EMA(model, cur_iter, dataloader, opt, force_run_stats=True)
-utils.save_networks(opt, cur_iter, model)
-utils.save_networks(opt, cur_iter, model, latest=True)
-is_best = fid_computer.update(model, cur_iter)
+utils.update_EMA(model, epoch, dataloader, opt, force_run_stats=True)
+utils.save_networks(opt, epoch, model)
+utils.save_networks(opt, epoch, model, latest=True)
+is_best = fid_computer.update(model, epoch)
 if is_best:
-    utils.save_networks(opt, cur_iter, model, best=True)
+    utils.save_networks(opt, epoch, model, best=True)
 
 print("The training has successfully finished")
 

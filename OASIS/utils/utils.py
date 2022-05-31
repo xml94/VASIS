@@ -5,6 +5,8 @@ import time
 import os
 import models.models as models
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
 from PIL import Image
 
 
@@ -274,8 +276,3 @@ def labelcolormap(N):
             cmap[i, 1] = g
             cmap[i, 2] = b
     return cmap
-
-
-
-
-

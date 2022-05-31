@@ -22,10 +22,26 @@ class OASIS_Generator(nn.Module):
         else:
             self.fc = nn.Conv2d(self.opt.semantic_nc, 16 * ch, 3, padding=1)
 
+        self.initialized_noise = False
+
     def compute_latent_vector_size(self, opt):
         w = opt.crop_size // (2**(opt.num_res_blocks-1))
         h = round(w / opt.aspect_ratio)
         return h, w
+
+    def init_noise(self, seg):
+        if not self.initialized_noise:
+            seed = 10
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            z = torch.randn(seg.size(0), self.opt.z_dim, dtype=torch.float32, device=seg.get_device())
+            z = z.view(z.size(0), self.opt.z_dim, 1, 1)
+            z = z.expand(z.size(0), self.opt.z_dim, seg.size(2), seg.size(3))
+            self.noise = z
+            self.initialized_noise = True
+            return z
+        else:
+            return self.noise
 
     def forward(self, input, z=None):
         seg = input
@@ -36,6 +52,7 @@ class OASIS_Generator(nn.Module):
             z = torch.randn(seg.size(0), self.opt.z_dim, dtype=torch.float32, device=dev)
             z = z.view(z.size(0), self.opt.z_dim, 1, 1)
             z = z.expand(z.size(0), self.opt.z_dim, seg.size(2), seg.size(3))
+            # z = self.init_noise(seg)
             seg = torch.cat((z, seg), dim = 1)
         x = F.interpolate(seg, size=(self.init_W, self.init_H))
         x = self.fc(x)
@@ -44,7 +61,7 @@ class OASIS_Generator(nn.Module):
             if i < self.opt.num_res_blocks-1:
                 x = self.up(x)
         x = self.conv_img(F.leaky_relu(x, 2e-1))
-        x = F.tanh(x)
+        x = torch.tanh(x)
         return x
 
 

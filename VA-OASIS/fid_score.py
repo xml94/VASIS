@@ -128,7 +128,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
             batch = batch.cuda()
 
         if args is not None and args.resize_size != -1:
-            batch = F.interpolate(batch, size=(args.resize_size, args.resize_size), mode='bilinear')
+            batch = F.interpolate(batch, size=(args.resize_size, args.resize_size), mode='bicubic')
         pred = model(batch)[0]
 
         # If model output is not scalar, apply global spatial average pooling.
@@ -269,8 +269,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
     tr_covmean = np.trace(covmean)
 
-    return (diff.dot(diff) + np.trace(sigma1) +
-            np.trace(sigma2) - 2 * tr_covmean)
+    return (diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean)
 
 
 def calculate_activation_statistics(files, model, batch_size=50,

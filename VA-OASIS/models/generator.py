@@ -12,7 +12,11 @@ class OASIS_Generator(nn.Module):
         ch = opt.channels_G
         self.channels = [16*ch, 16*ch, 16*ch, 8*ch, 4*ch, 2*ch, 1*ch]
         self.init_W, self.init_H = self.compute_latent_vector_size(opt)
-        self.conv_img = nn.Conv2d(self.channels[-1], 3, 3, padding=1)
+        # self.conv_img = nn.Conv2d(self.channels[-1], 3, 3, padding=1)
+        self.conv_img = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(self.channels[-1], 3, 3)
+        )
         self.up = nn.Upsample(scale_factor=2)
         self.body = nn.ModuleList([])
         for i in range(len(self.channels)-1):
