@@ -22,37 +22,23 @@ class OASIS_Generator(nn.Module):
         else:
             self.fc = nn.Conv2d(self.opt.semantic_nc, 16 * ch, 3, padding=1)
 
-        self.initialized_noise = False
-
     def compute_latent_vector_size(self, opt):
         w = opt.crop_size // (2**(opt.num_res_blocks-1))
         h = round(w / opt.aspect_ratio)
         return h, w
-
-    def init_noise(self, seg):
-        if not self.initialized_noise:
-            seed = 10
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-            z = torch.randn(seg.size(0), self.opt.z_dim, dtype=torch.float32, device=seg.get_device())
-            z = z.view(z.size(0), self.opt.z_dim, 1, 1)
-            z = z.expand(z.size(0), self.opt.z_dim, seg.size(2), seg.size(3))
-            self.noise = z
-            self.initialized_noise = True
-            return z
-        else:
-            return self.noise
 
     def forward(self, input, z=None):
         seg = input
         if self.opt.gpu_ids != "-1":
             seg.cuda()
         if not self.opt.no_3dnoise:
+            # seed = 42
+            # torch.manual_seed(seed)
+            # torch.cuda.manual_seed(seed)
             dev = seg.get_device() if self.opt.gpu_ids != "-1" else "cpu"
             z = torch.randn(seg.size(0), self.opt.z_dim, dtype=torch.float32, device=dev)
             z = z.view(z.size(0), self.opt.z_dim, 1, 1)
             z = z.expand(z.size(0), self.opt.z_dim, seg.size(2), seg.size(3))
-            # z = self.init_noise(seg)
             seg = torch.cat((z, seg), dim = 1)
         x = F.interpolate(seg, size=(self.init_W, self.init_H))
         x = self.fc(x)
