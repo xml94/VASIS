@@ -23,6 +23,13 @@
           </advancedOptions>
         </fileTransfer>
       </webServer>
+      <webServer id="fede7e1c-d9da-43ed-afc6-dca6776b34cb" name="oem83">
+        <fileTransfer accessType="SFTP" host="203.254.144.83" port="22" sshConfigId="50edd8ce-abad-4bc2-9595-f479735f2883" sshConfig="oem@203.254.144.83:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
     </option>
   </component>
 </project>

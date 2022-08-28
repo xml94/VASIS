@@ -4,6 +4,8 @@ import dataloaders.dataloaders as dataloaders
 import utils.utils as utils
 import config
 from utils.fid_scores import fid_pytorch
+import warnings
+warnings.filterwarnings('ignore')
 
 #--- read options ---#
 opt = config.read_arguments(train=False)
@@ -27,4 +29,4 @@ for i, data_i in enumerate(dataloader_val):
     generated = model(None, label, "generate", None)
     image_saver(label, generated, data_i["name"])
 
-is_best = fid_computer.update(model, 'best')
+# is_best = fid_computer.update(model, 'best')

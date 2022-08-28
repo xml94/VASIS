@@ -1,6 +1,6 @@
-export name=oasis_coco_pretrained
-#python test.py --name oasis_coco_pretrained --dataset_mode coco --gpu_ids 0,1,2,3 \
-#--dataroot ./../datasets/cocostuff --batch_size 8
+export name=oasis_coco
+python test.py --name ${name} --dataset_mode coco --gpu_ids 0,1,2,3 \
+--dataroot ./../datasets/cocostuff --batch_size 8
 
 
 # make the testing results as our format

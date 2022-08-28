@@ -40,6 +40,7 @@ import numpy as np
 import torch
 from scipy import linalg
 from imageio import imread
+from torchvision import transforms as TR
 from PIL import Image
 from torch.nn.functional import adaptive_avg_pool2d
 import torch.nn.functional as F
@@ -114,22 +115,31 @@ def get_activations(files, model, batch_size=50, dims=2048,
         start = i * batch_size
         end = start + batch_size
 
-        images = np.array([imread(str(f)).astype(np.float32) for f in files[start:end]])
-        if len(images.shape)==3:
-            images = images[:,:,:,np.newaxis]
-        if images.shape[3] == 1:
-            images = images.repeat(3, axis=3)   
-        # Reshape to (n_images, 3, height, width)
-        images = images.transpose((0, 3, 1, 2))
-        images /= 255
+        # different image reading method with training
+        # images = np.array([imread(str(f)).astype(np.float32) for f in files[start:end]])
+        # if len(images.shape)==3:
+        #     images = images[:,:,:,np.newaxis]
+        # if images.shape[3] == 1:
+        #     images = images.repeat(3, axis=3)
+        # # Reshape to (n_images, 3, height, width)
+        # images = images.transpose((0, 3, 1, 2))
+        # images /= 255
+        # batch = torch.from_numpy(images).type(torch.FloatTensor)
 
-        batch = torch.from_numpy(images).type(torch.FloatTensor)
+        # same image reading method with training
+        images = []
+        for f in files[start:end]:
+            image = Image.open(f).convert('RGB')
+            image = TR.functional.to_tensor(image)
+            images.append(image.unsqueeze(0))
+        batch = torch.cat(images, dim=0)
+
         if cuda:
             batch = batch.cuda()
 
         if args is not None and args.resize_size != -1:
             batch = F.interpolate(batch, size=(args.resize_size, args.resize_size), mode='bicubic')
-        pred = model(batch)[0]
+        pred = model(batch)[0].float()
 
         # If model output is not scalar, apply global spatial average pooling.
         # This happens if you choose a dimensionality not equal 2048.
@@ -298,6 +308,7 @@ def calculate_activation_statistics(files, model, batch_size=50,
         act = get_activations2(images, model, batch_size, dims, cuda, verbose)
     mu = np.mean(act, axis=0)
     sigma = np.cov(act, rowvar=False)
+
     return mu, sigma
 
 
@@ -340,7 +351,7 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims, args):
         m1 = np.load(os.path.join(root,args.load_np_name,'m.npy'))
         s1 = np.load(os.path.join(root,args.load_np_name,'s.npy'))
 
-    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size, dims, cuda,args)
+    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size, dims, cuda, args)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
     return fid_value

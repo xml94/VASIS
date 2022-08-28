@@ -8,9 +8,9 @@ batch=$5
 
 # must use absolute directory
 workDir=$(pwd)
-export drn_data_dir="$workDir"/datasets/eval_cityscapes/cityscapes
+export drn_data_dir="${workDir}"/datasets/eval_cityscapes/cityscapes
 
-export syn_dir=./$model/results/cityscapes/$expr_name/test_"$epoch"/images/synthesized_image
+export syn_dir=./${model}/results/cityscapes/${expr_name}/test_"${epoch}"/images/synthesized_image
 export real_dir='./datasets/cityscapes'
 export drn_model_dir='./pretrained_model/drn-d-105_ms_cityscapes.pth'
 
@@ -48,13 +48,13 @@ find "$drn_data_dir/gtFine/val" -maxdepth 3 -name "*_trainIds.png" | sort > "$dr
 # compute mIoU and Pixel Accuracy
 if [ ! -e $drn_model_dir ]
 then
-  echo "Error: There is no pretrained model."
+  echo "Error: no pretrained model."
 fi
 CUDA_VISIBLE_DEVICES=$GPU python3 ./evaluation/drn-master/segment.py test \
--d $drn_data_dir \
+-d "${drn_data_dir}" \
 --arch drn_d_105 \
 -c 19 \
---pretrained "$drn_model_dir" \
---batch-size $batch \
+--pretrained "${drn_model_dir}" \
+--batch-size "${batch}" \
 --with-gt \
 --phase val

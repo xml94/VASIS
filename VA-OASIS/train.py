@@ -7,6 +7,8 @@ import dataloaders.dataloaders as dataloaders
 import utils.utils as utils
 from utils.fid_scores import fid_pytorch
 import config
+import warnings
+warnings.filterwarnings('ignore')
 
 
 #--- read options ---#

@@ -12,14 +12,14 @@ batch_size: how many batches when computing, for ade20k, only 1 is valid
 EOF
 
 
-export model="OASIS"
+export model="VASIS"
 export epoch="best"
-export gpu=1
+export gpu=0
 export batch_size=1
 export date=2204
 export device=oem
 export norm_mode=spade_variation
 #export expr_name="$date"_"$norm_mode"_norm_cat_all_learn_all
-export expr_name="oasis_coco_pretrained"
+export expr_name="clade_coco_dist_pretrained"
 
 sh ./evaluation/deeplab_pytorch/eval_coco.sh $model $expr_name $epoch $gpu

@@ -1,8 +1,6 @@
-python test.py --name oasis_coco --dataset_mode coco --gpu_ids 0,1,2,3 \
---dataroot path_to_folder/ADEChallengeData2016 --batch_size 32 
-export name=oasis_coco_pretrained
-#python test.py --name oasis_coco_pretrained --dataset_mode coco --gpu_ids 0,1,2,3 \
-#--dataroot ./../datasets/cocostuff --batch_size 8
+export name=vaoasis_coco_seed0_batch24_cat
+python test.py --name ${name} --dataset_mode coco --gpu_ids 0,1,2,3 \
+--dataroot ./../datasets/cocostuff --batch_size 16 --seed 0 --no_3dnoise
 
 
 # make the testing results as our format

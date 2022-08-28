@@ -17,31 +17,39 @@ class SPADE(nn.Module):
             nn.Conv2d(label_nc, nhidden, kernel_size=ks, padding=pw),
             nn.ReLU()
         )
+        self.noise_type = 'cat'
+        if self.noise_type == 'cat':
+            self.norm_nc = norm_nc // 2
+            self.noise_nc = norm_nc - norm_nc // 2
+        elif self.noise_type == 'avg':
+            self.norm_nc = norm_nc
+            self.noise_nc = norm_nc
+        else:
+            raise NotImplementedError('Error: please check noise_type.')
         # original
         # self.mlp_gamma = nn.Conv2d(nhidden, norm_nc // 2, kernel_size=ks, padding=pw)
         # self.mlp_beta = nn.Conv2d(nhidden, norm_nc // 2, kernel_size=ks, padding=pw)
         self.mlp_gamma = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d(nhidden, norm_nc // 2, kernel_size=3),
+            nn.Conv2d(nhidden, self.norm_nc, kernel_size=3),
         )
         self.mlp_beta = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d(nhidden, norm_nc // 2, kernel_size=3),
+            nn.Conv2d(nhidden, self.norm_nc, kernel_size=3),
         )
 
         # position code
         H, W = height, width
         self.gamma_pos_learn = nn.Parameter(torch.randn(2, H, W))
         self.beta_pos_learn = nn.Parameter(torch.randn(2, H, W))
-        self.conv_pos_gamma = nn.Conv2d(2, norm_nc // 2, 1)
-        self.conv_pos_beta = nn.Conv2d(2, norm_nc // 2, 1)
+        self.conv_pos_gamma = nn.Conv2d(2, self.norm_nc, 1)
+        self.conv_pos_beta = nn.Conv2d(2, self.norm_nc, 1)
         nn.init.zeros_(self.conv_pos_gamma.weight)
         nn.init.zeros_(self.conv_pos_gamma.bias)
         nn.init.zeros_(self.conv_pos_beta.weight)
         nn.init.zeros_(self.conv_pos_beta.bias)
 
         # semantic noise
-        self.noise_nc = norm_nc - norm_nc // 2
         self.label_nc = label_nc
         self.gamma_noise_gamma = nn.Parameter(torch.rand(self.label_nc, self.noise_nc))
         self.beta_noise_gamma = nn.Parameter(torch.rand(self.label_nc, self.noise_nc))
@@ -56,8 +64,8 @@ class SPADE(nn.Module):
         beta_noise_beta = F.embedding(arg_mask, self.beta_noise_beta).permute(0, 3, 1, 2)
 
         B, _, H, W = mask.size()
-        noise_1 = torch.rand((B, self.norm_nc - self.norm_nc // 2, H, W), device=mask.device)
-        noise_2 = torch.rand((B, self.norm_nc - self.norm_nc // 2, H, W), device=mask.device)
+        noise_1 = torch.rand((B, self.noise_nc, H, W), device=mask.device)
+        noise_2 = torch.rand((B, self.noise_nc, H, W), device=mask.device)
 
         gamma_noise = noise_1 * gamma_noise_gamma + gamma_noise_beta
         beta_noise = noise_2 * beta_noise_gamma + beta_noise_beta
@@ -73,15 +81,19 @@ class SPADE(nn.Module):
         beta = self.mlp_beta(actv)
 
         # position code
-        # print(f"error 1 {self.gamma_pos_learn.size()}")
-        # print(f"error 2 {x.size()}")
         gamma = gamma * (1 + self.conv_pos_gamma(self.gamma_pos_learn.unsqueeze(0).to(x.device)))
         beta = beta * (1 + self.conv_pos_beta(self.beta_pos_learn.unsqueeze(0).to(x.device)))
 
         # noise code
         gamma_noise, beta_noise = self.affine_noise(segmap)
-        gamma = torch.cat([gamma, gamma_noise], dim=1)
-        beta = torch.cat([beta, beta_noise], dim=1)
+        if self.noise_type == 'cat':
+            gamma = torch.cat([gamma, gamma_noise], dim=1)
+            beta = torch.cat([beta, beta_noise], dim=1)
+        elif self.noise_type == 'avg':
+            gamma = (gamma + gamma_noise) / 2
+            beta = (beta + beta_noise) / 2
+        else:
+            raise NotImplementedError('Error: please check noise_type.')
 
         out = normalized * (1 + gamma) + beta
         return out

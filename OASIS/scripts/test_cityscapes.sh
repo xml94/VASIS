@@ -1,6 +1,6 @@
-export name=oasis_cityscapes_pretrained
-python test.py --name ${name} --dataset_mode cityscapes --gpu_ids 0,1,2,3 \
---dataroot ./../datasets/cityscapes --batch_size 20
+export name=oasis_cityscapes_batch16
+#python test.py --name ${name} --dataset_mode cityscapes --gpu_ids 0,1,2,3 \
+#--dataroot ./../datasets/cityscapes --batch_size 16
 
 
 # make the testing results as our format
@@ -14,3 +14,4 @@ export gpu=0
 export real_path="./../datasets/cityscapes/leftImg8bit_256/val/"
 export fake_path=${tgt_dir}
 python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu
+python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name cityscapes

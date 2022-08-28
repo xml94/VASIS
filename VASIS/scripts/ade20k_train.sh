@@ -12,7 +12,7 @@ export result="./results/ade20k"
 export ckpt="./checkpoints/ade20k"
 
 
-export norm_mode=spade_variation
+export norm_mode=clade_variation
 export batch=32
 export niter=150
 export niter_decay=150

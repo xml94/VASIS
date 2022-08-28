@@ -17,7 +17,10 @@ def read_arguments(train=True):
     opt.phase = 'train' if train else 'test'
     if train:
         opt.loaded_latest_iter = 0 if not opt.continue_train else load_iter(opt)
-    utils.fix_seed(opt.seed)
+    if not opt.seed == 0:
+        utils.fix_seed(opt.seed)
+    else:
+        print('Do not use random seed.')
     print_options(opt, parser)
     if train:
         save_options(opt, parser)
@@ -48,12 +51,13 @@ def add_all_arguments(parser, train):
     parser.add_argument('--z_dim', type=int, default=64, help="dimension of the latent z vector")
 
     if train:
-        parser.add_argument('--freq_print', type=int, default=100, help='frequency of showing training results')
-        parser.add_argument('--freq_save_ckpt', type=int, default=50000, help='frequency of saving the checkpoints')
-        parser.add_argument('--freq_save_latest', type=int, default=1000, help='frequency of saving the latest model')
+        parser.add_argument('--freq_print', type=int, default=1000, help='frequency of showing training results')
+        parser.add_argument('--freq_save_ckpt', type=int, default=20000, help='frequency of saving the checkpoints')
+        parser.add_argument('--freq_save_latest', type=int, default=10000, help='frequency of saving the latest model')
         parser.add_argument('--freq_smooth_loss', type=int, default=250, help='smoothing window for loss visualization')
         parser.add_argument('--freq_save_loss', type=int, default=2500, help='frequency of loss plot updates')
-        parser.add_argument('--freq_fid', type=int, default=1000, help='frequency of saving the fid score (in training iterations)')
+        parser.add_argument('--freq_fid', type=int, default=5000,
+                            help='frequency of saving the fid score (in training iterations)')
         parser.add_argument('--continue_train', action='store_true', help='resume previously interrupted training')
         parser.add_argument('--which_iter', type=str, default='latest', help='which epoch to load when continue_train')
         parser.add_argument('--num_epochs', type=int, default=200, help='number of epochs to train')
@@ -62,11 +66,14 @@ def add_all_arguments(parser, train):
         parser.add_argument('--lr_g', type=float, default=0.0001, help='G learning rate, default=0.0001')
         parser.add_argument('--lr_d', type=float, default=0.0004, help='D learning rate, default=0.0004')
 
-        parser.add_argument('--channels_D', type=int, default=64, help='# of discrim filters in first conv layer in discriminator')
+        parser.add_argument('--channels_D', type=int, default=64,
+                            help='# of discrim filters in first conv layer in discriminator')
         parser.add_argument('--add_vgg_loss', action='store_true', help='if specified, add VGG feature matching loss')
         parser.add_argument('--lambda_vgg', type=float, default=10.0, help='weight for VGG loss')
-        parser.add_argument('--no_balancing_inloss', action='store_true', default=False, help='if specified, do *not* use class balancing in the loss function')
-        parser.add_argument('--no_labelmix', action='store_true', default=False, help='if specified, do *not* use LabelMix')
+        parser.add_argument('--no_balancing_inloss', action='store_true', default=False,
+                            help='if specified, do *not* use class balancing in the loss function')
+        parser.add_argument('--no_labelmix', action='store_true', default=False,
+                            help='if specified, do *not* use LabelMix')
         parser.add_argument('--lambda_labelmix', type=float, default=10.0, help='weight for LabelMix regularization')
     else:
         parser.add_argument('--results_dir', type=str, default='./results/', help='saves testing results here.')

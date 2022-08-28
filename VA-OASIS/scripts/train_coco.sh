@@ -1,2 +1,3 @@
-python train.py --name oasis_coco --dataset_mode coco --gpu_ids 0,1,2,3 \
---dataroot path_to_folder/ADEChallengeData2016 --batch_size 32 
+python train.py --name vaoasis_coco_seed0_batch24 --dataset_mode coco --gpu_ids 0,1,2,3 \
+--dataroot ./../datasets/cocostuff --batch_size 24 --seed 0 --no_3dnoise \
+--num_epochs 150

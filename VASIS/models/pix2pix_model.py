@@ -41,20 +41,39 @@ class Pix2PixModel(torch.nn.Module):
                         self.netG, (151, 8, 8), as_strings=True,
                         print_per_layer_stat=False, verbose=False
                     )
+                    if opt.isTrain:
+                        macs_D, params_D = get_model_complexity_info(
+                            self.netD, (154, 256, 256), as_strings=True,
+                            print_per_layer_stat=False, verbose=False
+                        )
                 elif self.opt.dataset_mode == 'coco':
                     macs, params = get_model_complexity_info(
                         self.netG, (184, 8, 8), as_strings=True,
                         print_per_layer_stat=False, verbose=False
                     )
+                    if opt.isTrain:
+                        macs_D, params_D = get_model_complexity_info(
+                            self.netD, (187, 256, 256), as_strings=True,
+                            print_per_layer_stat=False, verbose=False
+                        )
                 elif self.opt.dataset_mode == 'cityscapes':
                     macs, params = get_model_complexity_info(
                         self.netG, (36, 8, 4), as_strings=True,
                         print_per_layer_stat=False, verbose=False
                     )
+                    if opt.isTrain:
+                        macs_D, params_D = get_model_complexity_info(
+                            self.netD, (39, 256, 512), as_strings=True,
+                            print_per_layer_stat=False, verbose=False
+                        )
                 else:
                     raise NotImplementedError('Checking please the dataset mode to compute flops.')
-                print('Checking: {:<30}  {:<8}'.format('Number of parameters: ', params))
-                print('Checking: {:<30}  {:<8}'.format('Computational complexity: ', macs))
+                print('Checking: {:<30}  {:<8}'.format('Number of parameters Generator: ', params))
+                print('Checking: {:<30}  {:<8}'.format('Computational complexity Generator: ', macs))
+                if opt.isTrain:
+                    print('Checking: {:<30}  {:<8}'.format('Number of parameters Discriminator: ', params_D))
+                    print('Checking: {:<30}  {:<8}'.format('Computational complexity Discriminator: ', macs_D))
+
 
         if self.opt.env == 'horovod':
             import horovod.torch as hvd

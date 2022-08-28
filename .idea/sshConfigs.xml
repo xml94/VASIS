@@ -5,6 +5,7 @@
       <sshConfig authType="PASSWORD" host="113.198.60.50" id="ce54b663-9b62-49ca-bc63-b42bd55286e5" port="10022" nameFormat="DESCRIPTIVE" username="oem" />
       <sshConfig authType="PASSWORD" host="113.198.60.51" id="d16ca7b4-d659-4626-a1a5-d16c21ba7867" port="10022" nameFormat="DESCRIPTIVE" username="oem" />
       <sshConfig authType="PASSWORD" host="113.198.60.56" id="ecceb689-2309-4fcc-9b48-1d12ad6eee93" port="10022" nameFormat="DESCRIPTIVE" username="multiai6" />
+      <sshConfig authType="PASSWORD" host="203.254.144.83" id="50edd8ce-abad-4bc2-9595-f479735f2883" port="22" nameFormat="DESCRIPTIVE" username="oem" useOpenSSHConfig="true" />
     </configs>
   </component>
 </project>

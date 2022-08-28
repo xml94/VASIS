@@ -50,4 +50,4 @@ Parpare dataset and evaluate cityscapes
 	-use down_img.py to down sampling
 -do evaluation
 	-enter drn directory
-	-sh test.sh, then you can see the results
+	-sh eval_city.sh, then you can see the results

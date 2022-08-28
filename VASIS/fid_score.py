@@ -269,8 +269,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
     tr_covmean = np.trace(covmean)
 
-    return (diff.dot(diff) + np.trace(sigma1) +
-            np.trace(sigma2) - 2 * tr_covmean)
+    return (diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean)
 
 
 def calculate_activation_statistics(files, model, batch_size=50,
@@ -340,7 +339,7 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims, args):
         m1 = np.load(os.path.join(root,args.load_np_name,'m.npy'))
         s1 = np.load(os.path.join(root,args.load_np_name,'s.npy'))
 
-    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size, dims, cuda,args)
+    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size, dims, cuda, args)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
     return fid_value

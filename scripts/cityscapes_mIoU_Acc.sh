@@ -12,27 +12,15 @@ batch_size: how many batches when computing
 EOF
 
 
-export model="OASIS"
+export model="VASIS"
 export epoch="best"
-export gpu=1
-export batch_size=5
+export gpu=2
+export batch_size=1
 export date=2204
 export device=oem
 export norm_mode=spade_variation
 export kernel_norm=3
 #export name="$date"_"$norm_mode"_kernel_"$kernel_norm"_norm_cat_all_relative_all
-export name="oasis_cityscapes_pretrained"
+export name="2208_clade_variation_norm_cat_no"
 
 sh ./evaluation/drn-master/eval_city.sh $name $model $epoch $gpu $batch_size
-
-
-#export model="ASAPNet-main"
-#export epoch="latest"
-#export gpu=2
-#export batch_size=5
-#export date=2201
-#export device=oem
-#export norm_mode=spade_variation
-#export name=
-#
-#sh ./evaluation/drn-master/eval_city.sh $name $model $epoch $gpu $batch_size

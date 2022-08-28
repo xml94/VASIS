@@ -61,11 +61,13 @@ class fid_pytorch():
                 else:
                     generated = netEMA(label)
                 generated = (generated + 1) / 2
+                # generated = generated.clamp(0, 1)
                 pool_val = self.model_inc(generated.float())[0][:, :, 0, 0]
                 pool += [pool_val]
             pool = torch.cat(pool, 0)
             mu, sigma = torch.mean(pool, 0), torch_cov(pool, rowvar=False)
             answer = self.numpy_calculate_frechet_distance(self.m1, self.s1, mu, sigma)
+
         netG.train()
         if not self.opt.no_EMA:
             netEMA.train()

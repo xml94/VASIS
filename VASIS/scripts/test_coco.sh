@@ -9,19 +9,17 @@ export result="results/coco"
 export ckpt="checkpoints/coco"
 
 
-export norm_mode=spade_variation
-#export name="$date"_"$norm_mode"_norm_cat_all_learn_all
-
-export name="2201_spade_variation_norm_cat_all_learn_one"
-#python test.py --name $name \
-#--norm_mode spade_variation --batchSize $batchSize \
-#--gpu_ids $gpu --which_epoch $epoch \
-#--dataset_mode coco --dataroot "./../datasets/cocostuff" \
-#--results_dir "$result" --checkpoints_dir $ckpt \
-#--pad 'reflect' \
-#--mode_noise 'norm_cat' --noise_nc 'all' \
-#--pos 'learn' --pos_nc 'all' \
-#--check_flop 1
+export norm_mode=clade
+export name="clade_coco_dist_pretrained"
+python test.py --name $name \
+--norm_mode ${norm_mode} --batchSize $batchSize \
+--gpu_ids $gpu --which_epoch $epoch \
+--dataset_mode coco --dataroot "./../datasets/cocostuff" \
+--results_dir "$result" --checkpoints_dir $ckpt \
+--pad 'zero' \
+--mode_noise 'norm_cat' --noise_nc 'zero' \
+--pos 'no' --pos_nc 'all' --add_dist --dist_type 'offline' \
+--check_flop 1
 
 
 #export norm_mode=clade_variation
@@ -40,5 +38,5 @@ export name="2201_spade_variation_norm_cat_all_learn_one"
 # compute FID
 export real_path="/home/oem/Mingle/VASIS/datasets/cocostuff/val_img_256"
 export fake_path=./$result/$name/test_"$epoch"/images/synthesized_image
-#python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name coco
-python fid_score.py $real_path $fake_path --batch-size 10 --gpu $gpu
+python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu --load_np_name coco
+python fid_score.py $real_path $fake_path --batch-size 1 --gpu $gpu
